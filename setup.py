@@ -28,4 +28,4 @@ setup(
     test_suite="nose.collector",
     tests_require=["nose", "nose-cover3"],
     zip_safe=False,
-) 
+)
