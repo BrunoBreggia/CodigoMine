@@ -12,7 +12,7 @@ setup(
     description="Mutual information neural estimation",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/jrestrepo86/mine.git",
+    url="https://github.com/BrunoBreggia/CodigoMine.git",
     author="Bruno M. Breggia",
     author_email="bruno.breggia@uner.edu.ar",
     license="MIT",
@@ -23,8 +23,9 @@ setup(
         "torch",
         "tqdm",
         "numpy",
+        "matplotlib",
     ],
     test_suite="nose.collector",
     tests_require=["nose", "nose-cover3"],
     zip_safe=False,
-)
+) 
