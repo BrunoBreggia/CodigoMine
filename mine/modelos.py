@@ -3,7 +3,7 @@ import torch.nn as nn
 import numpy as np
 import random
 from collections import OrderedDict
-from Implementacion_de_MINE.mineTools import actFunc
+from mineTools import actFunc
 
 class StandardModel:
 

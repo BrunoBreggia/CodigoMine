@@ -5,7 +5,7 @@ import numpy as np
 # import matplotlib.pyplot as plt
 from tqdm import tqdm
 import random
-from Implementacion_de_MINE.mineTools import generate_batches, actFunc
+from mineTools import generate_batches, actFunc
 
 # Implementacion de red neuronal multicapas 
 # para estimacion de red neuronal profunda

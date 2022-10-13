@@ -1,6 +1,6 @@
 import torch
 # import torch.nn as nn
-from Implementacion_de_MINE.mine import Mine
+from mine import Mine
 import math
 # from collections import OrderedDict
 # import numpy as np
