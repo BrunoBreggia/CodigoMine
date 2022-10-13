@@ -1,7 +1,10 @@
-import torch
-# import torch.nn as nn
-from mine import Mine
 import math
+
+import torch
+
+# import torch.nn as nn
+from .mine import Mine
+
 # from collections import OrderedDict
 # import numpy as np
 # import matplotlib.pyplot as plt
@@ -9,9 +12,8 @@ import math
 # import random
 # from Implementacion_de_MINE.mineTools import generate_batches, actFunc
 
-# Implementacion de red neuronal multicapas 
+# Implementacion de red neuronal multicapas
 # para estimacion de red neuronal profunda
-
 """
 Modelo para señales unidimensionales
 
@@ -25,6 +27,7 @@ Otros hiperparametros:
     * Tamaño del batch
 
 """
+
 
 class MineEMA(Mine):
 
@@ -51,11 +54,14 @@ class MineEMA(Mine):
         eval_hat = self.T(torch.cat((x, z_hat), dim=1))
 
         # Calculo de EMA
-        t_exp = torch.exp(torch.logsumexp(eval_hat, 0) - math.log(eval_hat.shape[0])).detach()
+        t_exp = torch.exp(
+            torch.logsumexp(eval_hat, 0) -
+            math.log(eval_hat.shape[0])).detach()
         if self.running_mean == 0:
             self.running_mean = t_exp
         else:
-            self.running_mean = self.alpha * t_exp + (1 - self.alpha) * self.running_mean
+            self.running_mean = self.alpha * t_exp + (
+                1 - self.alpha) * self.running_mean
         segundo_termino = MineEMA.EMALoss.apply(eval_hat, self.running_mean)
 
         # Evaluo limite inferior de informacion mutua
@@ -65,6 +71,7 @@ class MineEMA(Mine):
         return -nu
 
     class EMALoss(torch.autograd.Function):
+
         @staticmethod
         def forward(ctx, tensor, running_ema):
             # ctx is a context object that can be used to stash information
@@ -76,10 +83,8 @@ class MineEMA(Mine):
 
         @staticmethod
         def backward(ctx, grad_output):
-            grad = grad_output * ctx.tensor.exp().detach() / (ctx.running_ema + 1e-6) / ctx.tensor.shape[0]
+            grad = grad_output * ctx.tensor.exp().detach() / (
+                ctx.running_ema + 1e-6) / ctx.tensor.shape[0]
             # We return as many input gradients as there were arguments.
             # Gradients of non-Tensor arguments to forward must be None.
             return grad, None
-
-
-

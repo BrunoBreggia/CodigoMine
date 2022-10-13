@@ -1,15 +1,16 @@
-import torch
-import torch.nn as nn
+import random
+
 # from collections import OrderedDict
 import numpy as np
+import torch
+import torch.nn as nn
 # import matplotlib.pyplot as plt
 from tqdm import tqdm
-import random
-from mineTools import generate_batches, actFunc
 
-# Implementacion de red neuronal multicapas 
+from .mineTools import actFunc, generate_batches
+
+# Implementacion de red neuronal multicapas
 # para estimacion de red neuronal profunda
-
 """
 Modelo para señales unidimensionales
 
@@ -23,6 +24,7 @@ Otros hiperparametros:
     * Tamaño del batch
 
 """
+
 
 class Mine(nn.Module):
 
@@ -40,7 +42,8 @@ class Mine(nn.Module):
         super().__init__()
         self.cuda = cuda
         if self.cuda is None:
-            self.cuda = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+            self.cuda = torch.device(
+                "cuda:0" if torch.cuda.is_available() else "cpu")
         if model is None:
             pass
         self.T = model.get_model().to(self.cuda)
@@ -70,7 +73,13 @@ class Mine(nn.Module):
         # invertido de signo para poder maximizar con algoritmos convencionales de minimizacion
         return -nu
 
-    def train_model(self, X, Z, optimizer, batch_size=16, epochs=None, disableTqdm=False):
+    def train_model(self,
+                    X,
+                    Z,
+                    optimizer,
+                    batch_size=16,
+                    epochs=None,
+                    disableTqdm=False):
         """
         Entrena el modelo suministrado con batches formados 
         a partir del total de pares de muestras (x,z)
@@ -78,7 +87,7 @@ class Mine(nn.Module):
 
         Entrega un vector con los datos de informacion mutua
         estimada por cada epoca.
-        """ 
+        """
 
         # torch.cuda.manual_seed_all(0)
         # torch.manual_seed(0)
@@ -97,7 +106,7 @@ class Mine(nn.Module):
         output_train = []
         output_test = []
 
-        # Each epoch feeds the model 
+        # Each epoch feeds the model
         for epoch in tqdm(range(epochs[-1]), disable=disableTqdm):
 
             # set model to training mode
@@ -120,7 +129,7 @@ class Mine(nn.Module):
                     optimizer.step()
 
             # estimaciones[epoch] = -loss.item()
-            if epoch+1 in epochs:
+            if epoch + 1 in epochs:
                 output_train.append(-loss.item())
                 output_test.append(self.evaluate_model(X, Z))
 
@@ -138,10 +147,11 @@ class Mine(nn.Module):
         # set model to testing mode
         self.eval()
 
-        assert len(X) == len(Z), "Input and target data must contain same number of elements"
+        assert len(X) == len(
+            Z), "Input and target data must contain same number of elements"
         if isinstance(X, np.ndarray):
             X = torch.from_numpy(X).float()
-        if isinstance(Z, np.ndarray): 
+        if isinstance(Z, np.ndarray):
             Z = torch.from_numpy(Z).float()
 
         X = X.to(device=self.cuda)
@@ -152,8 +162,3 @@ class Mine(nn.Module):
             mutualInfo = -self(X, Z)
 
         return mutualInfo.cpu().item()
-
- 
-
-
-
