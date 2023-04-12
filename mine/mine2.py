@@ -42,15 +42,15 @@ class Mine2:
         minibatch_size = torch.tensor(len(entry1))
         return torch.mean(entry1) - torch.logsumexp(entry2, 0) + torch.log(minibatch_size)
 
-    def single_iteration(self, x_minibatch: np.array, z_minibatch: np.array) -> torch.tensor:
-        minibatch_size = len(x_minibatch)
-        # First input
-        net_input_1 = torch.cat((x_minibatch, z_minibatch), dim=1)
-        out1 = self.model(net_input_1)
-        # Now the permuted input
-        net_input_2 = torch.cat((x_minibatch, z_minibatch[torch.randperm(minibatch_size)]), dim=1)
-        out2 = self.model(net_input_2)
-        return out1, out2
+    # def single_iteration(self, x_minibatch: np.array, z_minibatch: np.array) -> torch.tensor:
+    #     minibatch_size = len(x_minibatch)
+    #     # First input
+    #     net_input_1 = torch.cat((x_minibatch, z_minibatch), dim=1)
+    #     out1 = self.model(net_input_1)
+    #     # Now the permuted input
+    #     net_input_2 = torch.cat((x_minibatch, z_minibatch[torch.randperm(minibatch_size)]), dim=1)
+    #     out2 = self.model(net_input_2)
+    #     return out1, out2
 
     def advance_epoch(self, x_batch:torch.tensor, z_batch:torch.tensor, shuffle=True):
         assert len(x_batch) == len(z_batch), "Sizes of input vectors are not the same"
@@ -68,7 +68,17 @@ class Mine2:
             for i in range(self.minibatches):
                 begin = int(i*batch_size/self.minibatches)
                 end = int((i+1)*batch_size/self.minibatches)
-                out1, out2 = self.single_iteration(x_batch[begin:end], z_batch[begin:end])
+
+                x_minibatch = x_batch[begin:end]
+                z_minibatch = z_batch[begin:end]
+                minibatch_size = len(x_minibatch)
+                # First input
+                net_input_1 = torch.cat((x_minibatch, z_minibatch), dim=1)
+                out1 = self.model(net_input_1)
+                # Now the permuted input
+                net_input_2 = torch.cat((x_minibatch, z_minibatch[torch.randperm(minibatch_size)]), dim=1)
+                out2 = self.model(net_input_2)
+
                 estimacion = self._estimate_mi(out1, out2)
                 # self.estimaciones.append(estimacion.item())
                 loss = -estimacion
