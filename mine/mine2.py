@@ -10,6 +10,29 @@ import time
 # os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
+def minibatches(trainig_set: torch.tensor, size: int):
+    """
+    Function that returns minibatches from an original trainign dataset,
+    of solicited size.
+
+    Parameters
+    ----------
+    trainig_set: torch.tensor
+        The complete dataset used for training, to be splitted into minibatches.
+    size: int
+        The size of the individual minibatches. If length of dataset is not
+        a multiple of the size, then last minibatch may contain less data.
+
+    Return
+    ------
+    minibatches: torch.tensor
+        A tensor of minibatches of demanded size.
+    """
+    # CHECKOUT Verify if this dimension to split is OK
+    minibatches = trainig_set.split(size, dim=1)
+    return minibatches
+
+
 class Mine2(nn.Module):
     """
     Modelo de red neuronal para estimar información mutua
@@ -211,28 +234,6 @@ class Mine2(nn.Module):
         if save:
             plt.savefig(f'mine{self.hiddenLayers}-{self.neurons}-{self.lr}-{self.minibatches}.pdf')
         plt.show()
-
-    # TODO turn this method into an external function
-    def minibatches(self, trainig_set: torch.tensor, size: int):
-        """
-        Function that returns minibatches from an original trainign dataset,
-        of solicited size.
-
-        Parameters
-        ----------
-        trainig_set: torch.tensor
-            The complete dataset used for training, to be splitted into minibatches
-        size: int
-            The size of the individual minibatches. If length of dataset is not
-            a multiple of the size, then last minibatch may contain less data
-
-        Return
-        ------
-
-        """
-        # CHECKOUT Verify if this dimension to split is OK
-        minibatches = trainig_set.split(size, dim=1)
-        return minibatches
 
     # def _estimate_mi(self, entry1: torch.tensor, entry2: torch.tensor):
     #     minibatch_size = torch.tensor(len(entry1))
