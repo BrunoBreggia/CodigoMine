@@ -6,8 +6,10 @@ from collections import OrderedDict
 from tqdm import tqdm
 import time
 
-# import os
-# os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+import os
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+
+# TODO: add progress bar with tqdm
 
 
 def generate_minibatches(trainig_set: torch.tensor, size: int):
@@ -28,8 +30,7 @@ def generate_minibatches(trainig_set: torch.tensor, size: int):
     minibatches: torch.tensor
         A tensor of minibatches of demanded size.
     """
-    # CHECKOUT Verify if this dimension to split is OK
-    minibatches = trainig_set.split(size, dim=1)
+    minibatches = trainig_set.split(size, dim=0)
     return minibatches
 
 
@@ -143,10 +144,10 @@ class Mine2(nn.Module):
         out1 = self(train_dataset)
 
         # Second input (x and permutted z) -> to break correlation between both signals
-        # FIXME: Possible bug at torch.randperm argument, possibly needs int not tensor
         permutation = torch.randperm(minibatch_size)
         permuted_z = train_dataset[:, 1][permutation]
-        permuted_input = torch.cat((train_dataset[:, 0], permuted_z), dim=1)
+        # CHECKOUT: better way to do this
+        permuted_input = torch.cat((train_dataset[:, 0].unsqueeze(1), permuted_z.unsqueeze(1)), dim=0)
         out2 = self(permuted_input)
 
         # Mutual information estimation
@@ -182,10 +183,10 @@ class Mine2(nn.Module):
             out1 = self(input_dataset)
 
             # Second input (x and permutted z) -> to break correlation between both signals
-            # FIXME: Possible bug at torch.randperm argument, possibly needs int not tensor
             permutation = torch.randperm(batch_size)
             permuted_z = train_dataset[:, 1][permutation]
-            permuted_input = torch.cat((train_dataset[:, 0], permuted_z), dim=1)
+            # CHECKOUT: better way to do this
+            permuted_input = torch.cat((train_dataset[:, 0].unsqueeze(1), permuted_z.unsqueeze(1)), dim=0)
             # net_input_2 = torch.cat((x_batch, z_batch[torch.randperm(batch_size)]), dim=1)
             out2 = self(permuted_input)
 
@@ -346,17 +347,16 @@ if __name__ == "__main__":
     true_mi = -0.5 * np.log(np.linalg.det(cov_matrix))
     print(f"The real mutual information is {true_mi}")
 
-    tic = time.time()
     MINE = Mine2(1, 10)
 
     input_dataset = torch.cat((x, z), dim=1)
     TRAIN_PERCENT = 80  # 80 percent of input dataset is saved for training, remaining for validation
     train_size = int(len(input_dataset)*TRAIN_PERCENT/100)
     val_size = len(input_dataset) - train_size
-    # CHECKOUT Verify if this dimension to split is OK
-    train_dataset, val_dataset = input_dataset.split([train_size, val_size], dim=1)
-    training_minibatches = generate_minibatches(train_dataset)
+    train_dataset, val_dataset = input_dataset.split([train_size, val_size], dim=0)
+    training_minibatches = generate_minibatches(train_dataset, size=100)
 
+    tic = time.time()
     MINE.fit(training_minibatches, val_dataset, 2000)
 
     # MINE.plot_training(true_mi)
