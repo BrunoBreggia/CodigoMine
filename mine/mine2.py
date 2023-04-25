@@ -10,7 +10,7 @@ import time
 # os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
-def minibatches(trainig_set: torch.tensor, size: int):
+def generate_minibatches(trainig_set: torch.tensor, size: int):
     """
     Function that returns minibatches from an original trainign dataset,
     of solicited size.
@@ -113,7 +113,7 @@ class Mine2(nn.Module):
             output = layer(output)
         return output
 
-    def training_step(self, x_minibatch: np.array, z_minibatch: np.array):
+    def training_step(self, train_dataset: torch.tensor):
         """
         Training step of the MINE neural network.
 
@@ -123,10 +123,9 @@ class Mine2(nn.Module):
 
         Parameters
         ----------
-        x_minibatch: np.array
-            Minibatch of signal x to train the MINE network
-        z_minibatch: np.array
-            Minibatch of signal z to train the MINE network
+        train_dataset: torch.tensor
+            Input to the model. It consists of the concatenation of the
+            two signals to analyze.
 
         Returns
         -------
@@ -137,16 +136,18 @@ class Mine2(nn.Module):
         """
 
         # Obtain size of minibatch
-        minibatch_size = x_minibatch.shape[0]
+        minibatch_size = train_dataset.shape[0]
 
         # First input (x and intact z)
-        net_input_1 = torch.cat((x_minibatch, z_minibatch), dim=1)
-        out1 = self(net_input_1)
+        # net_input_1 = torch.cat((x_minibatch, z_minibatch), dim=1)
+        out1 = self(train_dataset)
 
-        # FIXME: Possible bug at torch.randperm argument, possibly needs int not tensor
         # Second input (x and permutted z) -> to break correlation between both signals
-        net_input_2 = torch.cat((x_minibatch, z_minibatch[torch.randperm(minibatch_size)]), dim=1)
-        out2 = self(net_input_2)
+        # FIXME: Possible bug at torch.randperm argument, possibly needs int not tensor
+        permutation = torch.randperm(minibatch_size)
+        permuted_z = train_dataset[:, 1][permutation]
+        permuted_input = torch.cat((train_dataset[:, 0], permuted_z), dim=1)
+        out2 = self(permuted_input)
 
         # Mutual information estimation
         mi_estimation = torch.mean(out1) - torch.logsumexp(out2, 0) + torch.log(minibatch_size)
@@ -155,24 +156,38 @@ class Mine2(nn.Module):
         loss = -mi_estimation
         return loss
 
-    def evaluate(self, x_batch, z_batch):
+    def evaluate(self, input_dataset: torch.tensor):
         """
+        Evaluates the model output with respect to given input, without
+        performing backpropagation and with no gradiente calculation.
 
+        Parameters
+        ----------
+        input_dataset: torch.tensor
+            Input data to the model.
+
+        Return
+        ------
+        mi_estimation: torch.tensor
+            Output of the model, i.e the mutual information estimation.
         """
 
         with torch.no_grad():
 
             # Obtain size of minibatch
-            batch_size = x_batch.shape[0]
+            batch_size = input_dataset.shape[0]
 
             # First input (x and intact z)
-            net_input_1 = torch.cat((x_batch, z_batch), dim=1)
-            out1 = self(net_input_1)
+            # net_input_1 = torch.cat((x_batch, z_batch), dim=1)
+            out1 = self(input_dataset)
 
-            # FIXME: Possible bug at torch.randperm argument, possibly needs int not tensor
             # Second input (x and permutted z) -> to break correlation between both signals
-            net_input_2 = torch.cat((x_batch, z_batch[torch.randperm(batch_size)]), dim=1)
-            out2 = self(net_input_2)
+            # FIXME: Possible bug at torch.randperm argument, possibly needs int not tensor
+            permutation = torch.randperm(batch_size)
+            permuted_z = train_dataset[:, 1][permutation]
+            permuted_input = torch.cat((train_dataset[:, 0], permuted_z), dim=1)
+            # net_input_2 = torch.cat((x_batch, z_batch[torch.randperm(batch_size)]), dim=1)
+            out2 = self(permuted_input)
 
             # Mutual information estimation
             mi_estimation = torch.mean(out1) - torch.logsumexp(out2, 0) + torch.log(batch_size)
@@ -338,10 +353,12 @@ if __name__ == "__main__":
     TRAIN_PERCENT = 80  # 80 percent of input dataset is saved for training, remaining for validation
     train_size = int(len(input_dataset)*TRAIN_PERCENT/100)
     val_size = len(input_dataset) - train_size
-    train_dataset, val_dataset = input_dataset.split([train_size, val_size], dim=1) # CHECKOUT Verify if this dimension to split is OK
+    # CHECKOUT Verify if this dimension to split is OK
+    train_dataset, val_dataset = input_dataset.split([train_size, val_size], dim=1)
+    training_minibatches = generate_minibatches(train_dataset)
 
-    MINE.fit(train_dataset, val_dataset, 2000)
-    MINE.plot_training()
+    MINE.fit(training_minibatches, val_dataset, 2000)
+
     # MINE.plot_training(true_mi)
     # plt.plot([MINE.estimate_mi(x, z) for i in range(1000)])
 
@@ -353,6 +370,8 @@ if __name__ == "__main__":
     # MINE3 = Mine2(1, 30, 0.5, 1)
     # MINE3.run_epochs(x, z, 5000, viewProgress=False)
     toc = time.time()
+
+    MINE.plot_training()
 
     print(toc - tic)
 
