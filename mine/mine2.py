@@ -88,8 +88,11 @@ class Mine2(nn.Module):
         self.model = nn.Sequential(model).to(self.cuda)
 
         # lists for data collection during training
-        self.validation_progress = []
         self.training_progress = []
+        self.training_filtered = []
+        self.validation_progress = []
+        self.validation_filtered = []
+        self.k = 100
 
     def forward(self, input: torch.tensor):
         """
@@ -147,11 +150,11 @@ class Mine2(nn.Module):
         permutation = torch.randperm(minibatch_size)
         permuted_z = train_dataset[:, 1][permutation]
         # CHECKOUT: better way to do this
-        permuted_input = torch.cat((train_dataset[:, 0].unsqueeze(1), permuted_z.unsqueeze(1)), dim=0)
+        permuted_input = torch.cat((train_dataset[:, 0].unsqueeze(1), permuted_z.unsqueeze(1)), dim=1)
         out2 = self(permuted_input)
 
         # Mutual information estimation
-        mi_estimation = torch.mean(out1) - torch.logsumexp(out2, 0) + torch.log(minibatch_size)
+        mi_estimation = torch.mean(out1) - torch.logsumexp(out2, 0) + torch.log(torch.tensor(minibatch_size))
 
         # Return the loss: the loss is the opposite of the mutual info estimation
         loss = -mi_estimation
@@ -184,18 +187,18 @@ class Mine2(nn.Module):
 
             # Second input (x and permutted z) -> to break correlation between both signals
             permutation = torch.randperm(batch_size)
-            permuted_z = train_dataset[:, 1][permutation]
+            permuted_z = input_dataset[:, 1][permutation]
             # CHECKOUT: better way to do this
-            permuted_input = torch.cat((train_dataset[:, 0].unsqueeze(1), permuted_z.unsqueeze(1)), dim=0)
+            permuted_input = torch.cat((input_dataset[:, 0].unsqueeze(1), permuted_z.unsqueeze(1)), dim=1)
             # net_input_2 = torch.cat((x_batch, z_batch[torch.randperm(batch_size)]), dim=1)
             out2 = self(permuted_input)
 
             # Mutual information estimation
-            mi_estimation = torch.mean(out1) - torch.logsumexp(out2, 0) + torch.log(batch_size)
+            mi_estimation = torch.mean(out1) - torch.logsumexp(out2, 0) + torch.log(torch.tensor(batch_size))
 
         return mi_estimation
 
-    def fit(self, train_loader, val_loader, num_epochs, learning_rate=1e-4):
+    def fit(self, train_loader, val_loader, num_epochs, learning_rate=1e-4, show_progress=True):
         """
         Trains the MINE model using the provided training data loader and
         validates it using the provided validation data loader.
@@ -214,119 +217,61 @@ class Mine2(nn.Module):
             An integer specifying the number of epochs to train the model for.
         learning_rate: float
             A float specifying the learning rate to use for the optimizer.
-
+        show_progress: bool
+            Flag to turn on the percetage of training progress-bar.
         """
         optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
-        # self.validation_progress.clear()
 
-        for epoch in range(num_epochs):
+        for epoch in tqdm(range(num_epochs), disable=not show_progress):
 
-            # Training loop
+            # Training loop #
             for batch in train_loader:
                 loss = self.training_step(batch)
                 loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
 
-            # Validation
-            # with torch.no_grad():
-            result_train = self.evaluate(train_loader)
-            self.training_progress.append(result_train.item())
-            result_val = self.evaluate(val_loader)
-            self.validation_progress.append(result_val.item())
-
+            # Validation #
             # TODO Process the signal in validation_progress and cut the
             #  training epochs when this signal is decreasing
+            # Training queue
+            result_train = self.evaluate(torch.cat(train_loader, dim=0))
+            if len(self.training_progress) >= self.k:
+                self.training_progress.pop(0)
+            self.training_progress.append(result_train.item())
+            # Training smoothing
+            if len(self.training_filtered) == 0:
+                self.training_filtered.append(result_train)
+            else:
+                self.training_filtered.append(
+                    self.training_filtered[-1] + (result_train - self.training_progress[0]) / self.k
+                )
+            # Validation queue
+            result_val = self.evaluate(val_loader)
+            if len(self.validation_progress) >= self.k:
+                self.validation_progress.pop(0)
+            self.validation_progress.append(result_val.item())
+            # Validation smoothing
+            if len(self.validation_filtered) == 0:
+                self.validation_filtered.append(result_val)
+            else:
+                self.validation_filtered.append(
+                    self.validation_filtered[-1] + (result_val-self.validation_progress[0])/self.k
+                )
 
     def plot_training(self, true_mi: int = None, save=False):
-        plt.plot(self.training_progress, color='b')
-        plt.plot(self.validation_progress, color='g')
+        plt.plot(self.training_filtered, color='b', label='Training')
+        plt.plot(self.validation_filtered, color='g', label='Validation')
         if true_mi is not None:
             plt.axhline(y=true_mi, color='r', linestyle='-')
         plt.ylabel('Mutual information estimation')
         plt.xlabel('epoch')
         plt.title(f"MINE progress")
         plt.grid()
+        plt.legend(loc='best')
         if save:
-            plt.savefig(f'mine{self.hiddenLayers}-{self.neurons}-{self.lr}-{self.minibatches}.pdf')
+            plt.savefig(f'mine{self.hiddenLayers}-{self.neurons}.pdf')
         plt.show()
-
-    # def _estimate_mi(self, entry1: torch.tensor, entry2: torch.tensor):
-    #     minibatch_size = torch.tensor(len(entry1))
-    #     return torch.mean(entry1) - torch.logsumexp(entry2, 0) + torch.log(minibatch_size)
-
-    # def single_iteration(self, x_minibatch: np.array, z_minibatch: np.array) -> torch.tensor:
-    #     minibatch_size = len(x_minibatch)
-    #     # First input
-    #     net_input_1 = torch.cat((x_minibatch, z_minibatch), dim=1)
-    #     out1 = self.model(net_input_1)
-    #     # Now the permuted input
-    #     net_input_2 = torch.cat((x_minibatch, z_minibatch[torch.randperm(minibatch_size)]), dim=1)
-    #     out2 = self.model(net_input_2)
-    #     return out1, out2
-
-    # def advance_epoch(self, x_batch: torch.tensor, z_batch: torch.tensor, shuffle=True):
-    #     assert len(x_batch) == len(z_batch), "Sizes of input vectors are not the same"
-    #     batch_size = len(x_batch)
-    #     estimacion = None
-    #
-    #     if shuffle:
-    #         shuffle_idxs = torch.randperm(batch_size)
-    #         x_batch = x_batch[shuffle_idxs]
-    #         z_batch = z_batch[shuffle_idxs]
-    #
-    #     # set model to training mode
-    #     self.optimizer.zero_grad()
-    #     with torch.set_grad_enabled(True):
-    #         for i in range(self.minibatches):
-    #             begin = int(i*batch_size/self.minibatches)
-    #             end = int((i+1)*batch_size/self.minibatches)
-    #
-    #             x_minibatch = x_batch[begin:end]
-    #             z_minibatch = z_batch[begin:end]
-    #             minibatch_size = len(x_minibatch)
-    #             # First input
-    #             net_input_1 = torch.cat((x_minibatch, z_minibatch), dim=1)
-    #             out1 = self.model(net_input_1)
-    #             # Now the permuted input
-    #             net_input_2 = torch.cat((x_minibatch, z_minibatch[torch.randperm(minibatch_size)]), dim=1)
-    #             out2 = self.model(net_input_2)
-    #
-    #             estimacion = self._estimate_mi(out1, out2)
-    #             # self.estimaciones.append(estimacion.item())
-    #             loss = -estimacion
-    #             # self.model.zero_grad()
-    #             loss.backward()
-    #             self.optimizer.step()
-    #         # self.entrenamiento.append(estimacion.item())
-    #
-    # def run_epochs(self, x, z, n=1000, viewProgress=True):
-    #     if viewProgress:
-    #         print("Training network...")
-    #     for epoch in tqdm(range(n), disable=not viewProgress):
-    #         self.advance_epoch(x, z, shuffle=True)
-    #     if viewProgress:
-    #         print("Done!")
-    #     return True  # output as a parallelization flag
-    #
-    # def estimate_mi(self, x_batch:torch.tensor, z_batch:torch.tensor):
-    #     assert len(x_batch) == len(z_batch), "Sizes of input vectors are not the same"
-    #     with torch.no_grad():
-    #         out1, out2 = self.single_iteration(x_batch, z_batch)
-    #         estimate = self._estimate_mi(out1, out2).item()
-    #     return estimate
-
-    # def plot_training(self, true_mi=None, save=False):
-    #     plt.plot(self.entrenamiento)
-    #     if true_mi is not None:
-    #         plt.axhline(y=true_mi, color='r', linestyle='-')
-    #     plt.ylabel('informacion mutua estimada')
-    #     plt.xlabel('epoca')
-    #     plt.title(f"Progreso de MINE")
-    #     plt.grid()
-    #     if save:
-    #         plt.savefig(f'mine{self.hiddenLayers}-{self.neurons}-{self.lr}-{self.minibatches}.pdf')
-    #     plt.show()
 
 
 if __name__ == "__main__":
@@ -347,7 +292,7 @@ if __name__ == "__main__":
     true_mi = -0.5 * np.log(np.linalg.det(cov_matrix))
     print(f"The real mutual information is {true_mi}")
 
-    MINE = Mine2(1, 10)
+    MINE = Mine2(1, 100)
 
     input_dataset = torch.cat((x, z), dim=1)
     TRAIN_PERCENT = 80  # 80 percent of input dataset is saved for training, remaining for validation
@@ -357,22 +302,9 @@ if __name__ == "__main__":
     training_minibatches = generate_minibatches(train_dataset, size=100)
 
     tic = time.time()
-    MINE.fit(training_minibatches, val_dataset, 2000)
-
-    # MINE.plot_training(true_mi)
-    # plt.plot([MINE.estimate_mi(x, z) for i in range(1000)])
-
-    # MINE2 = Mine2(1, 20, 0.5, 1)
-    # MINE2.run_epochs(x, z, 5000, viewProgress=False)
-    # # MINE2.plot_training(true_mi)
-    # # plt.plot([MINE2.estimate_mi(x, z) for i in range(1000)])
-    #
-    # MINE3 = Mine2(1, 30, 0.5, 1)
-    # MINE3.run_epochs(x, z, 5000, viewProgress=False)
+    MINE.fit(training_minibatches, val_dataset, 3000)
     toc = time.time()
 
-    MINE.plot_training()
+    MINE.plot_training(true_mi)
 
     print(toc - tic)
-
-    # plt.axhline(y=true_mi, color='r', linestyle='-')
