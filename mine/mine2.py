@@ -232,6 +232,7 @@ class Mine2(nn.Module):
                 optimizer.zero_grad()
 
             # Validation #
+            # with torch.no_grad():
             # TODO Process the signal in validation_progress and cut the
             #  training epochs when this signal is decreasing
             # Training queue
@@ -302,7 +303,7 @@ if __name__ == "__main__":
     training_minibatches = generate_minibatches(train_dataset, size=100)
 
     tic = time.time()
-    MINE.fit(training_minibatches, val_dataset, 3000)
+    MINE.fit(training_minibatches, val_dataset, 10000)
     toc = time.time()
 
     MINE.plot_training(true_mi)
