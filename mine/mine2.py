@@ -41,6 +41,36 @@ def generate_minibatches(trainig_set: torch.tensor, size: int, shuffle=False):
     return minibatches
 
 
+def moving_average(raw_data: list, filtered_data: list, k: int):
+    """
+    Applies moving average to the raw_data signal and saves it onto
+    the filtered_data signal
+
+    Parameters
+    ----------
+    raw_data : list
+        Unfiltered data containing the last element of the signal,
+        in real time acquisition.
+    filtered_data : list
+        Filtered data up to one-to-last element, last element to be
+         appended in the present function.
+    k : int
+        Gap to consider the average from, i.e. last k elements of
+        raw_data would be averaged out and appended to filtered_data
+
+    """
+    last_data = raw_data[-1]
+    if len(filtered_data) == 0:
+        filtered_data.append(last_data)
+    else:
+        ref_value = raw_data[(-k) if len(raw_data) > k else 0]
+        filtered_data.append(filtered_data[-1] + (last_data - ref_value) / k)
+
+
+def exponential_moving_average(raw_data: list, filtered_data: list, alfa: float):
+    pass
+
+
 class Mine2(nn.Module):
     """
     Modelo de red neuronal para estimar información mutua
@@ -168,8 +198,9 @@ class Mine2(nn.Module):
 
     def evaluate(self, input_dataset: torch.tensor):
         """
-        Evaluates the model output with respect to given input, without
-        performing backpropagation and with no gradiente calculation.
+        Evaluates the model output with respect to given input.
+
+        Does not perform backpropagation nor gradient calculation.
 
         Parameters
         ----------
@@ -208,10 +239,12 @@ class Mine2(nn.Module):
             train_percent: int = 80,
             minibatch_size: int = 1,
             learning_rate: float = 1e-4,
-            random_partition=False,
+            random_partition: bool=False,
             show_progress: bool = False):
         """
-        Trains the MINE model using the provided training data loader and
+        Trains the MINE model
+
+        Uses the provided training data loader and
         validates it using the provided validation data loader.
 
         We expect the training and validation datasets to be fractions of the original paired
@@ -262,9 +295,11 @@ class Mine2(nn.Module):
         # Training data in train_dataset
         # Validation data in val_dataset
 
+        # ###################### Loop for epochs ######################
+        # In each epoch we train and validate
         for epoch in tqdm(range(num_epochs), disable=not show_progress):
 
-            # ################# Training loop #################
+            # ############### Training loop ###############
             for batch in generate_minibatches(train_dataset, size=minibatch_size, shuffle=True):
                 loss = self.training_step(batch)
                 loss.backward()
@@ -277,25 +312,11 @@ class Mine2(nn.Module):
             # Raw training signal
             result_train = self.evaluate(train_dataset)
             self.training_progress.append(result_train.item())
-            # Smoothed training signal
-            if len(self.training_filtered) == 0:
-                self.training_filtered.append(result_train)
-            else:
-                ref_value = self.training_progress[(-self.k) if len(self.training_progress) > self.k else 0]
-                self.training_filtered.append(
-                    self.training_filtered[-1] + (result_train - ref_value) / self.k
-                )
+            moving_average(self.training_progress, self.training_filtered, self.k)
             # Raw validation signal
             result_val = self.evaluate(val_dataset)
             self.validation_progress.append(result_val.item())
-            # Smoothed validation signal
-            if len(self.validation_filtered) == 0:
-                self.validation_filtered.append(result_val)
-            else:
-                ref_value = self.validation_progress[(-self.k) if len(self.validation_progress) > self.k else 0]
-                self.validation_filtered.append(
-                    self.validation_filtered[-1] + (result_val-ref_value)/self.k
-                )
+            moving_average(self.validation_progress, self.validation_filtered, self.k)
 
     def plot_training(self, true_mi: float = None, smooth: bool = True, save: bool = False):
         """
@@ -323,6 +344,7 @@ class Mine2(nn.Module):
 
         if true_mi is not None:
             plt.axhline(y=true_mi, color='r', linestyle='-')
+
         plt.ylabel('Mutual information estimation')
         plt.xlabel('epoch')
         plt.title(f"MINE progress")
@@ -359,4 +381,4 @@ if __name__ == "__main__":
 
     MINE.plot_training(true_mi)
 
-    print(toc - tic)
+    # print(toc - tic)
