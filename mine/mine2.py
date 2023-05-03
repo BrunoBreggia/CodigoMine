@@ -7,8 +7,8 @@ from tqdm import tqdm
 import time
 import itertools
 
-import os
-os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+# import os
+# os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
 def generate_minibatches(trainig_set: torch.tensor, size: int, shuffle=False):
@@ -346,9 +346,6 @@ class Mine2(nn.Module):
             moving_average(self.validation_progress, self.validation_filtered, self.k)
             # exponential_moving_average(self.validation_progress, self.validation_filtered, self.alpha)
 
-            # TODO Process the signal in validation_progress and cut the
-            #  training epochs when this signal is decreasing
-
             # stop criterion
             if self.stop_criterion():
                 break
@@ -430,8 +427,9 @@ if __name__ == "__main__":
     X_samples = joint_samples_train[:, :, 0]
     Z_samples = joint_samples_train[:, :, 1]
     # Convert to tensors
-    x = torch.from_numpy(X_samples).float().to(device='cpu')
-    z = torch.from_numpy(Z_samples).float().to(device='cpu')
+    cuda = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    x = torch.from_numpy(X_samples).float().to(device=cuda)
+    z = torch.from_numpy(Z_samples).float().to(device=cuda)
     # Informacion mutua mediante formula
     true_mi = -0.5 * np.log(np.linalg.det(cov_matrix))
     print(f"The real mutual information is {true_mi}")
