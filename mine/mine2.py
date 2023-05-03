@@ -5,6 +5,7 @@ import numpy as np
 from collections import OrderedDict
 from tqdm import tqdm
 import time
+import itertools
 
 import os
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
@@ -130,6 +131,10 @@ class Mine2(nn.Module):
         self.validation_progress = []
         self.validation_filtered = []
         self.k = 100
+        self.maximum = None
+        self.tolerance = 0.001  # measured in mutual information units
+        self.patience = 500  # measured in epochs
+        self.time_lapse = 0  # in epochs
 
     def forward(self, input: torch.tensor):
         """
@@ -239,7 +244,7 @@ class Mine2(nn.Module):
             train_percent: int = 80,
             minibatch_size: int = 1,
             learning_rate: float = 1e-4,
-            random_partition: bool=False,
+            random_partition: bool = False,
             show_progress: bool = False):
         """
         Trains the MINE model
@@ -297,8 +302,12 @@ class Mine2(nn.Module):
 
         # ###################### Loop for epochs ######################
         # In each epoch we train and validate
-        for epoch in tqdm(range(num_epochs), disable=not show_progress):
-
+        # for epoch in tqdm(range(num_epochs), disable=not show_progress):
+        for epoch in itertools.count():
+            if epoch % 1000 == 0:
+                print(f"\n--------------Epoch {epoch}--------------")
+            elif epoch % 100 == 0:
+                print(f"{epoch}", end='-')
             # ############### Training loop ###############
             for batch in generate_minibatches(train_dataset, size=minibatch_size, shuffle=True):
                 loss = self.training_step(batch)
@@ -307,8 +316,6 @@ class Mine2(nn.Module):
                 optimizer.zero_grad()
 
             # ################# Validation #################
-            # TODO Process the signal in validation_progress and cut the
-            #  training epochs when this signal is decreasing
             # Raw training signal
             result_train = self.evaluate(train_dataset)
             self.training_progress.append(result_train.item())
@@ -317,6 +324,41 @@ class Mine2(nn.Module):
             result_val = self.evaluate(val_dataset)
             self.validation_progress.append(result_val.item())
             moving_average(self.validation_progress, self.validation_filtered, self.k)
+
+            # TODO Process the signal in validation_progress and cut the
+            #  training epochs when this signal is decreasing
+
+            # stop criterion
+            if self.stop_criterion():
+                break
+
+    def stop_criterion(self) -> bool:
+        """
+        Decides when to stop training
+
+        Returns
+        -------
+        bool
+            Flag that indicates if it is time to stop training process,
+            i.e. no more training epochs.
+        """
+        if len(self.validation_filtered) == 1:
+            self.maximum = self.validation_filtered[0]
+        elif self.validation_filtered[-1] > self.maximum:  # validation_filtered[-2]:
+            self.maximum = self.validation_filtered[-1]
+            self.time_lapse = 0  # reset the time lapse
+        elif (last := self.validation_filtered[-1]) < self.maximum:
+            if self.maximum-last > self.tolerance:
+                self.time_lapse += 1
+            else:
+                self.time_lapse = 0
+        else:
+            self.time_lapse = 0
+
+        if self.time_lapse == self.patience:
+            print("Reached the stopping criterion!!")
+            return True
+        return False
 
     def plot_training(self, true_mi: float = None, smooth: bool = True, save: bool = False):
         """
@@ -381,4 +423,6 @@ if __name__ == "__main__":
 
     MINE.plot_training(true_mi)
 
-    # print(toc - tic)
+    input = torch.concat((x, z), dim=1)
+    mi = MINE.evaluate(input)  # CHECKOUT: no da el mismo resultado si se llama consecutivamente
+    print(f"The final estimated mutual information is {mi}")
