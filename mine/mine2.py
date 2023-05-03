@@ -58,7 +58,6 @@ def moving_average(raw_data: list, filtered_data: list, k: int):
     k : int
         Gap to consider the average from, i.e. last k elements of
         raw_data would be averaged out and appended to filtered_data
-
     """
     last_data = raw_data[-1]
     if len(filtered_data) == 0:
@@ -68,8 +67,27 @@ def moving_average(raw_data: list, filtered_data: list, k: int):
         filtered_data.append(filtered_data[-1] + (last_data - ref_value) / k)
 
 
-def exponential_moving_average(raw_data: list, filtered_data: list, alfa: float):
-    pass
+def exponential_moving_average(raw_data: list, filtered_data: list, alpha: float):
+    """
+    Applies exponential moving average (EMA) to the raw_data signal and saves it onto
+    the filtered_data signal
+
+    Parameters
+    ----------
+    raw_data : list
+        Unfiltered data containing the last element of the signal,
+        in real time acquisition.
+    filtered_data : list
+        Filtered data up to one-to-last element, last element to be
+        appended in the present function.
+    alpha : float
+        Smoothing factor, between 0 and 1
+    """
+    last_data = raw_data[-1]
+    if len(filtered_data) == 0:
+        filtered_data.append(last_data)
+    else:
+        filtered_data.append(alpha*last_data + (1-alpha)*filtered_data[-1])
 
 
 class Mine2(nn.Module):
@@ -131,6 +149,7 @@ class Mine2(nn.Module):
         self.validation_progress = []
         self.validation_filtered = []
         self.k = 100
+        self.alpha = 0.8
         self.maximum = None
         self.tolerance = 0.001  # measured in mutual information units
         self.patience = 500  # measured in epochs
@@ -320,10 +339,12 @@ class Mine2(nn.Module):
             result_train = self.evaluate(train_dataset)
             self.training_progress.append(result_train.item())
             moving_average(self.training_progress, self.training_filtered, self.k)
+            # exponential_moving_average(self.training_progress, self.training_filtered, self.alpha)
             # Raw validation signal
             result_val = self.evaluate(val_dataset)
             self.validation_progress.append(result_val.item())
             moving_average(self.validation_progress, self.validation_filtered, self.k)
+            # exponential_moving_average(self.validation_progress, self.validation_filtered, self.alpha)
 
             # TODO Process the signal in validation_progress and cut the
             #  training epochs when this signal is decreasing
