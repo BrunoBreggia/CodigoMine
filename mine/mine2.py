@@ -9,8 +9,6 @@ import time
 import os
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
-# TODO: add progress bar with tqdm
-
 
 def generate_minibatches(trainig_set: torch.tensor, size: int, shuffle=False):
     """
@@ -152,7 +150,6 @@ class Mine2(nn.Module):
         minibatch_size = train_dataset.shape[0]
 
         # First input (x and intact z)
-        # net_input_1 = torch.cat((x_minibatch, z_minibatch), dim=1)
         out1 = self(train_dataset)
 
         # Second input (x and permutted z) -> to break correlation between both signals
@@ -199,7 +196,6 @@ class Mine2(nn.Module):
             permuted_z = input_dataset[:, 1][permutation]
             # CHECKOUT: better way to do this
             permuted_input = torch.cat((input_dataset[:, 0].unsqueeze(1), permuted_z.unsqueeze(1)), dim=1)
-            # net_input_2 = torch.cat((x_batch, z_batch[torch.randperm(batch_size)]), dim=1)
             out2 = self(permuted_input)
 
             # Mutual information estimation
@@ -212,6 +208,7 @@ class Mine2(nn.Module):
             train_percent: int = 80,
             minibatch_size: int = 1,
             learning_rate: float = 1e-4,
+            random_partition=False,
             show_progress: bool = False):
         """
         Trains the MINE model using the provided training data loader and
@@ -236,29 +233,45 @@ class Mine2(nn.Module):
             Size of minibatches to be created during training.
         learning_rate : float
             A float specifying the learning rate to use for the optimizer.
+        random_partition : bool
+            Flag that indicates if you want the validation data to be randomly
+            selected from the entire dataset, otherwise it will be taken from
+            the end of the signal.
         show_progress : bool
             Flag to turn on the percetage of training progress-bar.
         """
-        optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
 
+        optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
         input_dataset = torch.cat((signal_x, signal_z), dim=1)
+
+        # Size calculation of training and validation datasets
         train_size = int(len(input_dataset) * train_percent / 100)
         val_size = len(input_dataset) - train_size
 
-        # TODO: obtain the validation portion of signal from randomly selected index.
-        #  The remaining portions of data should be joined and used for training.
-        train_dataset, val_dataset = input_dataset.split([train_size, val_size], dim=0)
+        # Random selection of validation data
+        if random_partition:
+            rand_index = np.random.randint(0, train_size-val_size)
+            train_size_1 = rand_index + 1
+            train_size_2 = train_size-train_size_1
+            train_dataset_1, val_dataset, train_dataset_2 = \
+                input_dataset.split([train_size_1, val_size, train_size_2], dim=0)
+            train_dataset = torch.cat((train_dataset_1, train_dataset_2), dim=0)
+        else:
+            train_dataset, val_dataset = input_dataset.split([train_size, val_size], dim=0)
+
+        # Training data in train_dataset
+        # Validation data in val_dataset
 
         for epoch in tqdm(range(num_epochs), disable=not show_progress):
 
-            # Training loop #
+            # ################# Training loop #################
             for batch in generate_minibatches(train_dataset, size=minibatch_size, shuffle=True):
                 loss = self.training_step(batch)
                 loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
 
-            # Validation #
+            # ################# Validation #################
             # TODO Process the signal in validation_progress and cut the
             #  training epochs when this signal is decreasing
             # Raw training signal
@@ -341,7 +354,7 @@ if __name__ == "__main__":
     MINE = Mine2(3, 100)
 
     tic = time.time()
-    MINE.fit(x, z, num_epochs=10000, minibatch_size=500, learning_rate=5e-4, show_progress=True)
+    MINE.fit(x, z, num_epochs=10000, minibatch_size=500, learning_rate=5e-4, random_partition=True, show_progress=True)
     toc = time.time()
 
     MINE.plot_training(true_mi)
