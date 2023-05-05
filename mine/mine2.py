@@ -89,11 +89,6 @@ def exponential_moving_average(raw_data: list, filtered_data: list, alpha: float
     else:
         filtered_data.append(alpha*last_data + (1-alpha)*filtered_data[-1])
 
-# TODO: implementar dos estimadores basados en la red.
-#  Por un lado: el maximo valor de la validación cruda hasta el momento de la detención
-#  Por otro: la: el forward de todos los datos evaluado en la época donde la validacion filtrada es maxima
-#  Ambos a calcularse luego de la detención de la red.
-
 
 class Mine2(nn.Module):
     """
@@ -149,16 +144,20 @@ class Mine2(nn.Module):
         self.model = nn.Sequential(model).to(self.cuda)
 
         # lists for data collection during training
-        self.training_progress = []
+        self.training_raw = []
         self.training_filtered = []
-        self.validation_progress = []
+        self.validation_raw = []
         self.validation_filtered = []
+        self.validation_complete = []
         self.k = 100
         self.alpha = 0.8
         self.maximum = None
+        self.maximum_pos = None
         self.tolerance = 0.001  # measured in mutual information units
         self.patience = 500  # measured in epochs
         self.time_lapse = 0  # in epochs
+
+        self.trained: bool = False
 
     def forward(self, input: torch.tensor):
         """
@@ -248,7 +247,7 @@ class Mine2(nn.Module):
         return mi_estimation
 
     def fit(self, signal_x: torch.tensor, signal_z: torch.tensor,
-            num_epochs: int,
+            num_epochs: int = None,
             train_percent: int = 80,
             minibatch_size: int = 1,
             learning_rate: float = 1e-4,
@@ -284,7 +283,8 @@ class Mine2(nn.Module):
             selected from the entire dataset, otherwise it will be taken from
             the end of the signal.
         show_progress : bool
-            Flag to turn on the percetage of training progress-bar.
+            Flag to turn on the percetage of training progress-bar. Cannot
+            be true if num_epochs is None.
         """
 
         optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
@@ -309,14 +309,21 @@ class Mine2(nn.Module):
         # Validation data in val_dataset
 
         # ###################### Loop for epochs ######################
+
+        if num_epochs is not None:
+            iterable = tqdm(range(num_epochs), disable=not show_progress)
+        else:
+            iterable = itertools.count()
+
         # In each epoch we train and validate
-        # for epoch in tqdm(range(num_epochs), disable=not show_progress):
-        for epoch in itertools.count():
+        for epoch in iterable:
             if epoch % 1000 == 0:
                 print(f"\n--------------Epoch {epoch}--------------")
             elif epoch % 100 == 0:
                 print(f"{epoch}", end='-')
+
             # ############### Training loop ###############
+
             for batch in generate_minibatches(train_dataset, size=minibatch_size, shuffle=True):
                 loss = self.training_step(batch)
                 loss.backward()
@@ -324,19 +331,28 @@ class Mine2(nn.Module):
                 optimizer.zero_grad()
 
             # ################# Validation #################
+
             # Raw training signal
             result_train = self.evaluate(train_dataset)
-            self.training_progress.append(result_train)
-            moving_average(self.training_progress, self.training_filtered, self.k)
+            self.training_raw.append(result_train)
+            moving_average(self.training_raw, self.training_filtered, self.k)
             # exponential_moving_average(self.training_progress, self.training_filtered, self.alpha)
+
             # Raw validation signal
             result_val = self.evaluate(val_dataset)
-            self.validation_progress.append(result_val)
-            moving_average(self.validation_progress, self.validation_filtered, self.k)
+            self.validation_raw.append(result_val)
+            moving_average(self.validation_raw, self.validation_filtered, self.k)
             # exponential_moving_average(self.validation_progress, self.validation_filtered, self.alpha)
+
+            # Validation with whole dataset
+            result_total = self.evaluate(input_dataset)
+            self.validation_complete.append(result_total)
 
             # stop criterion
             if self.stop_criterion():
+                print("\nReached the stopping criterion!!")
+                print(f"Ended in epoch {epoch}")
+                self.trained = True
                 break
 
     def stop_criterion(self) -> bool:
@@ -351,8 +367,10 @@ class Mine2(nn.Module):
         """
         if len(self.validation_filtered) == 1:
             self.maximum = self.validation_filtered[0]
+            self.maximum_pos = 0
         elif self.validation_filtered[-1] > self.maximum:  # validation_filtered[-2]:
             self.maximum = self.validation_filtered[-1]
+            self.maximum_pos = len(self.validation_filtered)-1
             self.time_lapse = 0  # reset the time lapse
         elif (last := self.validation_filtered[-1]) < self.maximum:
             if self.maximum-last > self.tolerance:
@@ -363,9 +381,22 @@ class Mine2(nn.Module):
             self.time_lapse = 0
 
         if self.time_lapse == self.patience:
-            print("Reached the stopping criterion!!")
             return True
         return False
+
+    # TODO: implementar dos estimadores basados en la red.
+    #  Por un lado: el maximo valor de la validación cruda hasta el momento de la detención
+    #  Por otro: el forward de todos los datos evaluado en la época donde la validacion filtrada es maxima
+    #  Ambos a calcularse luego de la detención de la red.
+
+    def estimacion_mi(self, criterio):
+
+        if self.trained:
+            if criterio == "criterio 1":
+                return max(self.validation_raw)
+            elif criterio == "criterio 2":
+                return self.validation_complete[self.maximum_pos]
+        return None
 
     def plot_training(self, true_mi: float = None, smooth: bool = True, save: bool = False):
         """
@@ -388,8 +419,8 @@ class Mine2(nn.Module):
             plt.plot(self.training_filtered, color='b', label='Training')
             plt.plot(self.validation_filtered, color='g', label='Validation')
         else:
-            plt.plot(self.training_progress, color='b', label='Training')
-            plt.plot(self.validation_progress, color='g', label='Validation')
+            plt.plot(self.training_raw, color='b', label='Training')
+            plt.plot(self.validation_raw, color='g', label='Validation')
 
         if true_mi is not None:
             plt.axhline(y=true_mi, color='r', linestyle='-')
@@ -432,5 +463,10 @@ if __name__ == "__main__":
     MINE.plot_training(true_mi)
 
     input = torch.concat((x, z), dim=1)
-    mi = MINE.evaluate(input)  # CHECKOUT: no da el mismo resultado si se llama consecutivamente
-    print(f"The final estimated mutual information is {mi}")
+    mi_1 = MINE.estimacion_mi("criterio 1")
+    mi_2 = MINE.estimacion_mi("criterio 2")
+
+    print(f"Info mutua (criterio 1): {mi_1}")
+    print(f"Info mutua (criterio 2): {mi_2}")
+
+
