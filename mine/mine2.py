@@ -384,11 +384,6 @@ class Mine2(nn.Module):
             return True
         return False
 
-    # TODO: implementar dos estimadores basados en la red.
-    #  Por un lado: el maximo valor de la validación cruda hasta el momento de la detención
-    #  Por otro: el forward de todos los datos evaluado en la época donde la validacion filtrada es maxima
-    #  Ambos a calcularse luego de la detención de la red.
-
     def estimacion_mi(self, criterio):
 
         if self.trained:
