@@ -7,8 +7,8 @@ from tqdm import tqdm
 import time
 import itertools
 
-# import os
-# os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+import os
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
 def generate_minibatches(trainig_set: torch.tensor, size: int, shuffle=False):
@@ -91,8 +91,9 @@ def exponential_moving_average(raw_data: list, filtered_data: list, alpha: float
 
 # TODO: implementar dos estimadores basados en la red.
 #  Por un lado: el maximo valor de la validación cruda hasta el momento de la detención
-#  Por oto: la: el forward de todos los datos evaluado en la época donde la validacion filtrada es maxima
+#  Por otro: la: el forward de todos los datos evaluado en la época donde la validacion filtrada es maxima
 #  Ambos a calcularse luego de la detención de la red.
+
 
 class Mine2(nn.Module):
     """
@@ -174,18 +175,29 @@ class Mine2(nn.Module):
         Returns
         -------
         output : torch.tensor
-            Tensor with the output of the model
+            Tensor with the output of the model (the mutual information estimation)
         """
 
-        output = self.model(input)
+        # Obtain size of minibatch
+        batch_size = input.shape[0]
 
-        # TODO: que devuelva la informacion mutua
-        #  Colocar aca todo el calculo de la estimacion
-        #  y quitarla del entrenamiento y evaluacion
+        # First input into de model layers (x and intact z)
+        out1 = self.model(input)
 
-        return output
+        # Second input (x and permutted z) -> to break correlation between both signals
+        permutation = torch.randperm(batch_size)
+        # permuted_input = input
+        # permuted_input = permuted_input[:, 1][permutation]  # permute z values
+        permuted_z = input[:, 1][permutation]
+        permuted_input = torch.cat((input[:, 0].unsqueeze(1), permuted_z.unsqueeze(1)), dim=1)
+        out2 = self.model(permuted_input)
 
-    def training_step(self, train_dataset: torch.tensor):
+        # Mutual information estimation
+        mi_estimation = torch.mean(out1) - torch.logsumexp(out2, 0) + torch.log(torch.tensor(batch_size))
+
+        return mi_estimation
+
+    def training_step(self, train_minibatch: torch.tensor):
         """
         Training step of the MINE neural network.
 
@@ -195,7 +207,7 @@ class Mine2(nn.Module):
 
         Parameters
         ----------
-        train_dataset : torch.tensor
+        train_minibatch : torch.tensor
             Input to the model. It consists of the concatenation of the
             two signals to analyze.
 
@@ -207,21 +219,7 @@ class Mine2(nn.Module):
             to maximize, which is the mutual information estimation.
         """
 
-        # Obtain size of minibatch
-        minibatch_size = train_dataset.shape[0]
-
-        # First input (x and intact z)
-        out1 = self(train_dataset)
-
-        # Second input (x and permutted z) -> to break correlation between both signals
-        permutation = torch.randperm(minibatch_size)
-        permuted_z = train_dataset[:, 1][permutation]
-        # CHECKOUT: better way to do this
-        permuted_input = torch.cat((train_dataset[:, 0].unsqueeze(1), permuted_z.unsqueeze(1)), dim=1)
-        out2 = self(permuted_input)
-
-        # Mutual information estimation
-        mi_estimation = torch.mean(out1) - torch.logsumexp(out2, 0) + torch.log(torch.tensor(minibatch_size))
+        mi_estimation = self(train_minibatch)
 
         # Return the loss: the loss is the opposite of the mutual info estimation
         loss = -mi_estimation
@@ -245,23 +243,7 @@ class Mine2(nn.Module):
         """
 
         with torch.no_grad():
-
-            # Obtain size of minibatch
-            batch_size = input_dataset.shape[0]
-
-            # First input (x and intact z)
-            # net_input_1 = torch.cat((x_batch, z_batch), dim=1)
-            out1 = self(input_dataset)
-
-            # Second input (x and permutted z) -> to break correlation between both signals
-            permutation = torch.randperm(batch_size)
-            permuted_z = input_dataset[:, 1][permutation]
-            # CHECKOUT: better way to do this
-            permuted_input = torch.cat((input_dataset[:, 0].unsqueeze(1), permuted_z.unsqueeze(1)), dim=1)
-            out2 = self(permuted_input)
-
-            # Mutual information estimation
-            mi_estimation = torch.mean(out1) - torch.logsumexp(out2, 0) + torch.log(torch.tensor(batch_size))
+            mi_estimation = self(input_dataset).item()
 
         return mi_estimation
 
@@ -344,12 +326,12 @@ class Mine2(nn.Module):
             # ################# Validation #################
             # Raw training signal
             result_train = self.evaluate(train_dataset)
-            self.training_progress.append(result_train.item())
+            self.training_progress.append(result_train)
             moving_average(self.training_progress, self.training_filtered, self.k)
             # exponential_moving_average(self.training_progress, self.training_filtered, self.alpha)
             # Raw validation signal
             result_val = self.evaluate(val_dataset)
-            self.validation_progress.append(result_val.item())
+            self.validation_progress.append(result_val)
             moving_average(self.validation_progress, self.validation_filtered, self.k)
             # exponential_moving_average(self.validation_progress, self.validation_filtered, self.alpha)
 
