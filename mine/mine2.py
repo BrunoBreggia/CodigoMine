@@ -11,7 +11,7 @@ import os
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
-def generate_minibatches(trainig_set: torch.tensor, size: int, shuffle=False):
+def generate_minibatches(trainig_set: torch.tensor, size: int, shuffle: bool = False):
     """
     Function that returns minibatches from an original trainign dataset,
     of solicited size.
@@ -104,7 +104,7 @@ class Mine2(nn.Module):
     la misma posee una cota superior al estimarse con una red neuronal.
     """
 
-    def __init__(self, hidden_layers: int, neurons: int, cuda: str=None):
+    def __init__(self, hidden_layers: int, neurons: int, cuda: str = None):
         """
         Parameters
         ----------
