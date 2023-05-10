@@ -7,8 +7,8 @@ from tqdm import tqdm
 import time
 import itertools
 
-import os
-os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+# import os
+# os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
 def generate_minibatches(trainig_set: torch.tensor, size: int, shuffle: bool = False):
@@ -159,7 +159,7 @@ class Mine2(nn.Module):
 
         self.trained: bool = False
 
-    def forward(self, input: torch.tensor):
+    def forward(self, x: torch.tensor, z: torch.tensor):
         """
         Defines the forward pass of the network.
 
@@ -178,18 +178,19 @@ class Mine2(nn.Module):
         """
 
         # Obtain size of minibatch
-        batch_size = input.shape[0]
+        batch_size = x.shape[0]
 
         # First input into de model layers (x and intact z)
-        out1 = self.model(input)
+        out1 = self.model(torch.cat((x, z), dim=1))
 
         # Second input (x and permutted z) -> to break correlation between both signals
-        permutation = torch.randperm(batch_size)
+        # permutation = torch.randperm(batch_size)
         # permuted_input = input
         # permuted_input = permuted_input[:, 1][permutation]  # permute z values
-        permuted_z = input[:, 1][permutation]
-        permuted_input = torch.cat((input[:, 0].unsqueeze(1), permuted_z.unsqueeze(1)), dim=1)
-        out2 = self.model(permuted_input)
+        permuted_z = z[torch.randperm(batch_size)]
+
+        # permuted_input = torch.cat((input[:, 0].unsqueeze(1), permuted_z.unsqueeze(1)), dim=1)
+        out2 = self.model(torch.cat((x, permuted_z), dim=1))
 
         # Mutual information estimation
         mi_estimation = torch.mean(out1) - torch.logsumexp(out2, 0) + torch.log(torch.tensor(batch_size))
@@ -217,8 +218,9 @@ class Mine2(nn.Module):
             The loss is actually the negative of the value we really want
             to maximize, which is the mutual information estimation.
         """
+        x, z = train_minibatch.split(1, dim=1)
 
-        mi_estimation = self(train_minibatch)
+        mi_estimation = self(x, z)
 
         # Return the loss: the loss is the opposite of the mutual info estimation
         loss = -mi_estimation
@@ -241,8 +243,10 @@ class Mine2(nn.Module):
             Output of the model, i.e the mutual information estimation.
         """
 
+        x, z = input_dataset.split(1, dim=1)
+
         with torch.no_grad():
-            mi_estimation = self(input_dataset).item()
+            mi_estimation = self(x, z).item()
 
         return mi_estimation
 
@@ -296,6 +300,7 @@ class Mine2(nn.Module):
 
         # Random selection of validation data
         if random_partition:
+            # TODO: mejorar la separacion de datos de training y validacion
             rand_index = np.random.randint(0, train_size-val_size)
             train_size_1 = rand_index + 1
             train_size_2 = train_size-train_size_1
@@ -313,6 +318,7 @@ class Mine2(nn.Module):
         if num_epochs is not None:
             iterable = tqdm(range(num_epochs), disable=not show_progress)
         else:
+            # TODO: Agregar limite superior de epocas (usar num_epochs)
             iterable = itertools.count()
 
         # In each epoch we train and validate
@@ -323,7 +329,7 @@ class Mine2(nn.Module):
                 print(f"{epoch}", end='-')
 
             # ############### Training loop ###############
-
+            self.train()  # Set model to training mode
             for batch in generate_minibatches(train_dataset, size=minibatch_size, shuffle=True):
                 loss = self.training_step(batch)
                 loss.backward()
@@ -368,7 +374,7 @@ class Mine2(nn.Module):
         if len(self.validation_filtered) == 1:
             self.maximum = self.validation_filtered[0]
             self.maximum_pos = 0
-        elif self.validation_filtered[-1] > self.maximum:  # validation_filtered[-2]:
+        elif self.validation_filtered[-1] >= self.maximum:  # validation_filtered[-2]:
             self.maximum = self.validation_filtered[-1]
             self.maximum_pos = len(self.validation_filtered)-1
             self.time_lapse = 0  # reset the time lapse
@@ -377,23 +383,25 @@ class Mine2(nn.Module):
                 self.time_lapse += 1
             else:
                 self.time_lapse = 0
-        else:
-            self.time_lapse = 0
+        # else:
+        #     self.time_lapse = 0
 
         if self.time_lapse == self.patience:
             return True
         return False
 
-    def estimacion_mi(self, criterio):
+    def estimacion_mi(self):
 
-        if self.trained:
-            if criterio == "criterio 1":
-                return max(self.validation_raw)
-            elif criterio == "criterio 2":
-                return self.validation_complete[self.maximum_pos]
-        return None
+        # if self.trained:
+        #     if criterio == "criterio 1":
+        #         return max(self.validation_raw)
+        #     elif criterio == "criterio 2":
+        #         return self.validation_complete[self.maximum_pos]
 
-    def plot_training(self, true_mi: float = None, smooth: bool = True, save: bool = False):
+        return (max(self.validation_raw), np.argmax(self.validation_raw)), \
+               (self.validation_complete[self.maximum_pos], self.maximum_pos)
+
+    def plot_training(self, true_mi: float = None):
         """
         Plots the progress of training and of validation process during the training epochs.
         The curves are actually smoothed out with moving average filter.
@@ -410,12 +418,9 @@ class Mine2(nn.Module):
             Flag that indicates if we want to save the plot to a pdf file.
         """
 
-        if smooth:
-            plt.plot(self.training_filtered, color='b', label='Training')
-            plt.plot(self.validation_filtered, color='g', label='Validation')
-        else:
-            plt.plot(self.training_raw, color='b', label='Training')
-            plt.plot(self.validation_raw, color='g', label='Validation')
+        plt.plot(self.training_raw, color='b', label='Training')
+        plt.plot(self.validation_raw, color='g', label='Validation raw')
+        plt.plot(self.validation_filtered, color='orange', label='Validation')
 
         if true_mi is not None:
             plt.axhline(y=true_mi, color='r', linestyle='-')
@@ -425,9 +430,24 @@ class Mine2(nn.Module):
         plt.title(f"MINE progress")
         plt.grid()
         plt.legend(loc='best')
-        if save:
-            plt.savefig(f'mine{self.hiddenLayers}-{self.neurons}.pdf')
-        plt.show()
+
+        plt.figure()
+
+        plt.plot(self.validation_complete, color='purple', label='Valitation complete and raw')
+        plt.plot(self.validation_filtered, color='orange', label='Validation')
+
+        if true_mi is not None:
+            plt.axhline(y=true_mi, color='r', linestyle='-')
+
+        plt.ylabel('Mutual information estimation')
+        plt.xlabel('epoch')
+        plt.title(f"MINE progress")
+        plt.grid()
+        plt.legend(loc='best')
+
+        # if save:
+        #     plt.savefig(f'mine{self.hiddenLayers}-{self.neurons}.pdf')
+        # plt.show()
 
 
 if __name__ == "__main__":
@@ -458,10 +478,10 @@ if __name__ == "__main__":
     MINE.plot_training(true_mi)
 
     input = torch.concat((x, z), dim=1)
-    mi_1 = MINE.estimacion_mi("criterio 1")
-    mi_2 = MINE.estimacion_mi("criterio 2")
-
-    print(f"Info mutua (criterio 1): {mi_1}")
-    print(f"Info mutua (criterio 2): {mi_2}")
+    print(MINE.estimacion_mi())
+    # mi_2 = MINE.estimacion_mi("criterio 2")
+    #
+    # print(f"Info mutua (criterio 1): {mi_1}")
+    # print(f"Info mutua (criterio 2): {mi_2}")
 
 
