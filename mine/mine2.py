@@ -371,6 +371,9 @@ class Mine2(nn.Module):
             Flag that indicates if it is time to stop training process,
             i.e. no more training epochs.
         """
+        # TODO: modificar el criterio de parada.
+        #  Que el limite de tolerancia sea un limite superior, no uno inferior
+        #  Fijarse en foto de la pizarra de Feli para recordar algoritmo
         if len(self.validation_filtered) == 1:
             self.maximum = self.validation_filtered[0]
             self.maximum_pos = 0
