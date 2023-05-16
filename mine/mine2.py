@@ -300,13 +300,14 @@ class Mine2(nn.Module):
 
         # Random selection of validation data
         if random_partition:
-            # TODO: mejorar la separacion de datos de training y validacion
+            # Extraigo los datos de validacion
             rand_index = np.random.randint(0, train_size-val_size)
-            train_size_1 = rand_index + 1
-            train_size_2 = train_size-train_size_1
-            train_dataset_1, val_dataset, train_dataset_2 = \
-                input_dataset.split([train_size_1, val_size, train_size_2], dim=0)
-            train_dataset = torch.cat((train_dataset_1, train_dataset_2), dim=0)
+            val_dataset = input_dataset[rand_index:rand_index + val_size, :]
+            # Creo una mascara para separar los datos de entrenamiento
+            mascara = torch.zeros(input_dataset.shape)
+            mascara[0:rand_index, :] = 1
+            mascara[rand_index:, :] = 1
+            train_dataset = input_dataset[mascara]
         else:
             train_dataset, val_dataset = input_dataset.split([train_size, val_size], dim=0)
 
@@ -318,7 +319,6 @@ class Mine2(nn.Module):
         if num_epochs is not None:
             iterable = tqdm(range(num_epochs), disable=not show_progress)
         else:
-            # TODO: Agregar limite superior de epocas (usar num_epochs)
             iterable = itertools.count()
 
         # In each epoch we train and validate
@@ -378,7 +378,8 @@ class Mine2(nn.Module):
             self.maximum = self.validation_filtered[-1]
             self.maximum_pos = len(self.validation_filtered)-1
             self.time_lapse = 0  # reset the time lapse
-        elif (last := self.validation_filtered[-1]) < self.maximum:
+        else:
+            last = self.validation_filtered[-1]
             if self.maximum-last > self.tolerance:
                 self.time_lapse += 1
             else:
