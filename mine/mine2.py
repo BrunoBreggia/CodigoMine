@@ -7,8 +7,8 @@ from tqdm import tqdm
 import time
 import itertools
 
-# import os
-# os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+import os
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
 def generate_minibatches(trainig_set: torch.tensor, size: int, shuffle: bool = False):
@@ -291,23 +291,25 @@ class Mine2(nn.Module):
             be true if num_epochs is None.
         """
 
+        assert signal_x.shape == signal_z.shape, "Signal sizes do no match"
         optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
         input_dataset = torch.cat((signal_x, signal_z), dim=1)
 
         # Size calculation of training and validation datasets
-        train_size = int(len(input_dataset) * train_percent / 100)
-        val_size = len(input_dataset) - train_size
+        train_size = int(len(signal_x) * train_percent / 100)
+        val_size = len(signal_x) - train_size
 
         # Random selection of validation data
         if random_partition:
             # Extraigo los datos de validacion
             rand_index = np.random.randint(0, train_size-val_size)
-            val_dataset = input_dataset[rand_index:rand_index + val_size, :]
+            val_dataset = torch.cat((signal_x[rand_index:rand_index + val_size, :],
+                                     signal_z[rand_index:rand_index + val_size, :]), dim=1)
             # Creo una mascara para separar los datos de entrenamiento
-            mascara = torch.zeros(input_dataset.shape)
-            mascara[0:rand_index, :] = 1
-            mascara[rand_index:, :] = 1
-            train_dataset = input_dataset[mascara]
+            mascara = torch.zeros(len(signal_x), dtype=torch.bool)
+            mascara[0:rand_index] = True
+            mascara[rand_index+val_size:] = True
+            train_dataset = torch.cat((signal_x[mascara], signal_z[mascara]), dim=1)
         else:
             train_dataset, val_dataset = input_dataset.split([train_size, val_size], dim=0)
 
@@ -374,12 +376,13 @@ class Mine2(nn.Module):
         # TODO: modificar el criterio de parada.
         #  Que el limite de tolerancia sea un limite superior, no uno inferior
         #  Fijarse en foto de la pizarra de Feli para recordar algoritmo
+
         if len(self.validation_filtered) == 1:
             self.maximum = self.validation_filtered[0]
             self.maximum_pos = 0
-        elif self.validation_filtered[-1] >= self.maximum:  # validation_filtered[-2]:
+        elif self.validation_filtered[-1] >= (self.maximum + self.tolerance):
             self.maximum = self.validation_filtered[-1]
-            self.maximum_pos = len(self.validation_filtered)-1
+            self.maximum_pos = len(self.validation_filtered) - 1
             self.time_lapse = 0  # reset the time lapse
         else:
             last = self.validation_filtered[-1]
