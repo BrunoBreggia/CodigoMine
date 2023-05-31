@@ -149,11 +149,11 @@ class Mine2(nn.Module):
         self.validation_raw = []
         self.validation_filtered = []
         self.validation_complete = []
-        self.k = 100
+        self.k = 100  # orden del filtrado moving average
         self.alpha = 0.8
         self.maximum = None
         self.maximum_pos = None
-        self.tolerance = 0.001  # measured in mutual information units
+        self.tolerance = 0.01  # measured in mutual information units (upper bound)
         self.patience = 500  # measured in epochs
         self.time_lapse = 0  # in epochs
 
@@ -373,9 +373,6 @@ class Mine2(nn.Module):
             Flag that indicates if it is time to stop training process,
             i.e. no more training epochs.
         """
-        # TODO: modificar el criterio de parada.
-        #  Que el limite de tolerancia sea un limite superior, no uno inferior
-        #  Fijarse en foto de la pizarra de Feli para recordar algoritmo
 
         if len(self.validation_filtered) == 1:
             self.maximum = self.validation_filtered[0]
@@ -383,15 +380,9 @@ class Mine2(nn.Module):
         elif self.validation_filtered[-1] >= (self.maximum + self.tolerance):
             self.maximum = self.validation_filtered[-1]
             self.maximum_pos = len(self.validation_filtered) - 1
-            self.time_lapse = 0  # reset the time lapse
+            self.time_lapse = 0  # reset the time-lapse
         else:
-            last = self.validation_filtered[-1]
-            if self.maximum-last > self.tolerance:
-                self.time_lapse += 1
-            else:
-                self.time_lapse = 0
-        # else:
-        #     self.time_lapse = 0
+            self.time_lapse += 1
 
         if self.time_lapse == self.patience:
             return True
@@ -406,7 +397,8 @@ class Mine2(nn.Module):
         #         return self.validation_complete[self.maximum_pos]
 
         return (max(self.validation_raw), np.argmax(self.validation_raw)), \
-               (self.validation_complete[self.maximum_pos], self.maximum_pos)
+               (self.validation_complete[np.argmax(self.validation_filtered)], np.argmax(self.validation_filtered)), \
+               (self.validation_raw[np.argmax(self.validation_filtered)], np.argmax(self.validation_filtered))
 
     def plot_training(self, true_mi: float = None):
         """
