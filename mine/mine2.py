@@ -294,6 +294,7 @@ class Mine2(nn.Module):
 
         assert signal_x.shape == signal_z.shape, "Signal sizes do no match"
         optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
+        # TODO: revisar por que no anda con esto...
         # scheduler = ReduceLROnPlateau(optimizer, 'min')  # for an adaptive learning rate
         input_dataset = torch.cat((signal_x, signal_z), dim=1)
 
