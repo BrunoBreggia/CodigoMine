@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 import matplotlib.pyplot as plt
 import numpy as np
 from collections import OrderedDict
@@ -153,8 +154,8 @@ class Mine2(nn.Module):
         self.alpha = 0.8
         self.maximum = None
         self.maximum_pos = None
-        self.tolerance = 0.01  # measured in mutual information units (upper bound)
-        self.patience = 500  # measured in epochs
+        self.tolerance = 0.0  # measured in mutual information units (upper bound)
+        self.patience = 1000  # measured in epochs
         self.time_lapse = 0  # in epochs
 
         self.trained: bool = False
@@ -293,6 +294,7 @@ class Mine2(nn.Module):
 
         assert signal_x.shape == signal_z.shape, "Signal sizes do no match"
         optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
+        # scheduler = ReduceLROnPlateau(optimizer, 'min')  # for an adaptive learning rate
         input_dataset = torch.cat((signal_x, signal_z), dim=1)
 
         # Size calculation of training and validation datasets
@@ -340,13 +342,13 @@ class Mine2(nn.Module):
 
             # ################# Validation #################
 
-            # Raw training signal
+            # Training signal
             result_train = self.evaluate(train_dataset)
             self.training_raw.append(result_train)
             moving_average(self.training_raw, self.training_filtered, self.k)
             # exponential_moving_average(self.training_progress, self.training_filtered, self.alpha)
 
-            # Raw validation signal
+            # Validation signal
             result_val = self.evaluate(val_dataset)
             self.validation_raw.append(result_val)
             moving_average(self.validation_raw, self.validation_filtered, self.k)
@@ -355,6 +357,8 @@ class Mine2(nn.Module):
             # Validation with whole dataset
             result_total = self.evaluate(input_dataset)
             self.validation_complete.append(result_total)
+
+            # scheduler.step(-result_val)
 
             # stop criterion
             if self.stop_criterion():
@@ -466,7 +470,6 @@ if __name__ == "__main__":
     z = torch.from_numpy(Z_samples).float().to(device=cuda)
     # Informacion mutua mediante formula
     true_mi = -0.5 * np.log(np.linalg.det(cov_matrix))
-    print(f"The real mutual information is {true_mi}")
 
     MINE = Mine2(3, 100)
 
@@ -478,6 +481,8 @@ if __name__ == "__main__":
 
     input = torch.concat((x, z), dim=1)
     print(MINE.estimacion_mi())
+
+    print(f"The real mutual information is {true_mi}")
     # mi_2 = MINE.estimacion_mi("criterio 2")
     #
     # print(f"Info mutua (criterio 1): {mi_1}")
