@@ -255,7 +255,7 @@ class Mine2(nn.Module):
             num_epochs: int = None,
             train_percent: int = 80,
             minibatch_size: int = 1,
-            learning_rate: float = 1e-4,
+            learning_rate: float = 1e-3,
             random_partition: bool = False,
             show_progress: bool = False):
         """
@@ -295,7 +295,7 @@ class Mine2(nn.Module):
         assert signal_x.shape == signal_z.shape, "Signal sizes do no match"
         optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
         # TODO: revisar por que no anda con esto...
-        # scheduler = ReduceLROnPlateau(optimizer, 'min')  # for an adaptive learning rate
+        scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=1000, factor=0.01, verbose=True)  # for an adaptive learning rate
         input_dataset = torch.cat((signal_x, signal_z), dim=1)
 
         # Size calculation of training and validation datasets
@@ -359,7 +359,7 @@ class Mine2(nn.Module):
             result_total = self.evaluate(input_dataset)
             self.validation_complete.append(result_total)
 
-            # scheduler.step(-result_val)
+            scheduler.step(-result_val)
 
             # stop criterion
             if self.stop_criterion():
