@@ -154,7 +154,7 @@ class Mine2(nn.Module):
         self.alpha = 0.8
         self.maximum = None
         self.maximum_pos = None
-        self.tolerance = 0.0  # measured in mutual information units (upper bound)
+        self.tolerance = 0.00  # measured in mutual information units (upper bound)
         self.patience = 1000  # measured in epochs
         self.time_lapse = 0  # in epochs
 
@@ -295,7 +295,7 @@ class Mine2(nn.Module):
         assert signal_x.shape == signal_z.shape, "Signal sizes do no match"
         optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
         # TODO: revisar por que no anda con esto...
-        scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=1000, factor=0.01, verbose=True)  # for an adaptive learning rate
+        scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=250, factor=0.5, verbose=True)  # for an adaptive learning rate
         input_dataset = torch.cat((signal_x, signal_z), dim=1)
 
         # Size calculation of training and validation datasets
@@ -480,7 +480,6 @@ if __name__ == "__main__":
 
     MINE.plot_training(true_mi)
 
-    input = torch.concat((x, z), dim=1)
     print(MINE.estimacion_mi())
 
     print(f"The real mutual information is {true_mi}")
