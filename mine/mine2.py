@@ -255,7 +255,7 @@ class Mine2(nn.Module):
             num_epochs: int = None,
             train_percent: int = 80,
             minibatch_size: int = 1,
-            learning_rate: float = 1e-3,
+            learning_rate: float = 1e-5,
             random_partition: bool = False,
             show_progress: bool = False):
         """
@@ -475,7 +475,7 @@ if __name__ == "__main__":
     MINE = Mine2(3, 100)
 
     tic = time.time()
-    MINE.fit(x, z, num_epochs=10000, minibatch_size=500, learning_rate=5e-4, random_partition=True, show_progress=True)
+    MINE.fit(x, z, num_epochs=10000, minibatch_size=500, learning_rate=5e-3, random_partition=True, show_progress=True)
     toc = time.time()
 
     MINE.plot_training(true_mi)
