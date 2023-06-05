@@ -149,7 +149,7 @@ class Mine2(nn.Module):
         self.training_filtered = []
         self.validation_raw = []
         self.validation_filtered = []
-        self.validation_complete = []
+        self.testing_raw = []
         self.k = 100  # orden del filtrado moving average
         self.alpha = 0.8
         self.maximum = None
@@ -351,9 +351,9 @@ class Mine2(nn.Module):
             moving_average(self.validation_raw, self.validation_filtered, self.k)
             # exponential_moving_average(self.validation_progress, self.validation_filtered, self.alpha)
 
-            # Validation with whole dataset
+            # Testing (with whole dataset)
             result_total = self.evaluate(input_dataset)
-            self.validation_complete.append(result_total)
+            self.testing_raw.append(result_total)
 
             scheduler.step(-result_val)
 
@@ -398,7 +398,7 @@ class Mine2(nn.Module):
         #         return self.validation_complete[self.maximum_pos]
 
         return (max(self.validation_raw), np.argmax(self.validation_raw)), \
-               (self.validation_complete[np.argmax(self.validation_filtered)], np.argmax(self.validation_filtered)), \
+               (self.testing_raw[np.argmax(self.validation_filtered)], np.argmax(self.validation_filtered)), \
                (self.validation_raw[np.argmax(self.validation_filtered)], np.argmax(self.validation_filtered))
 
     def plot_training(self, true_mi: float = None):
@@ -433,7 +433,7 @@ class Mine2(nn.Module):
 
         plt.figure()
 
-        plt.plot(self.validation_complete, color='purple', label='Valitation complete and raw')
+        plt.plot(self.testing_raw, color='purple', label='Valitation complete and raw')
         plt.plot(self.validation_filtered, color='orange', label='Validation')
 
         if true_mi is not None:
