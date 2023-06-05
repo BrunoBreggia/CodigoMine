@@ -294,8 +294,7 @@ class Mine2(nn.Module):
 
         assert signal_x.shape == signal_z.shape, "Signal sizes do no match"
         optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
-        # TODO: revisar por que no anda con esto...
-        scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=250, factor=0.5, verbose=True)  # for an adaptive learning rate
+        scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=250, factor=0.99, verbose=True)  # for an adaptive learning rate
         input_dataset = torch.cat((signal_x, signal_z), dim=1)
 
         # Size calculation of training and validation datasets
@@ -304,15 +303,12 @@ class Mine2(nn.Module):
 
         # Random selection of validation data
         if random_partition:
-            # Extraigo los datos de validacion
-            rand_index = np.random.randint(0, train_size-val_size)
-            val_dataset = torch.cat((signal_x[rand_index:rand_index + val_size, :],
-                                     signal_z[rand_index:rand_index + val_size, :]), dim=1)
-            # Creo una mascara para separar los datos de entrenamiento
-            mascara = torch.zeros(len(signal_x), dtype=torch.bool)
-            mascara[0:rand_index] = True
-            mascara[rand_index+val_size:] = True
-            train_dataset = torch.cat((signal_x[mascara], signal_z[mascara]), dim=1)
+            # Extraigo set de validacion de forma aleatoria como muestras dispersas del dataset total
+            val_mask = torch.zeros(len(signal_x), dtype=torch.bool)
+            val_indices = torch.randint(size=(val_size,), low=0, high=len(val_mask))
+            val_mask[val_indices] = True
+            val_dataset = torch.cat((signal_x[val_mask], signal_z[val_mask]), dim=1)
+            train_dataset = torch.cat((signal_x[~val_mask], signal_z[~val_mask]), dim=1)
         else:
             train_dataset, val_dataset = input_dataset.split([train_size, val_size], dim=0)
 
