@@ -90,7 +90,7 @@ def exponential_moving_average(raw_data: list, filtered_data: list, alpha: float
     else:
         filtered_data.append(alpha*last_data + (1-alpha)*filtered_data[-1])
 
-
+# TODO: que se pueda cambiar la funcion de activcacion de la red
 class Mine2(nn.Module):
     """
     Modelo de red neuronal para estimar información mutua
