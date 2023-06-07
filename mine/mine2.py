@@ -155,7 +155,7 @@ class Mine2(nn.Module):
         self.maximum = None
         self.maximum_pos = None
         self.tolerance = 0.00  # measured in mutual information units (upper bound)
-        self.patience = 1000  # measured in epochs
+        self.stop_patience = 1000  # measured in epochs
         self.time_lapse = 0  # in epochs
 
         self.trained: bool = False
@@ -257,7 +257,9 @@ class Mine2(nn.Module):
             minibatch_size: int = 1,
             learning_rate: float = 1e-5,
             random_partition: bool = False,
-            show_progress: bool = False):
+            show_progress: bool = False,
+            patience: int = 250,
+            scaling_factor:float = 0.5):
         """
         Trains the MINE model
 
@@ -294,7 +296,7 @@ class Mine2(nn.Module):
 
         assert signal_x.shape == signal_z.shape, "Signal sizes do no match"
         optimizer = torch.optim.SGD(self.model.parameters(), lr=learning_rate)
-        scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=250, factor=0.99, verbose=True)  # for an adaptive learning rate
+        scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=patience, factor=scaling_factor, verbose=show_progress)  # for an adaptive learning rate
         input_dataset = torch.cat((signal_x, signal_z), dim=1)
 
         # Size calculation of training and validation datasets
@@ -385,7 +387,7 @@ class Mine2(nn.Module):
         else:
             self.time_lapse += 1
 
-        if self.time_lapse == self.patience:
+        if self.time_lapse == self.stop_patience:
             return True
         return False
 
