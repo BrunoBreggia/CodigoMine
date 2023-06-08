@@ -8,8 +8,8 @@ from tqdm import tqdm
 import time
 import itertools
 
-import os
-os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+# import os
+# os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
 def generate_minibatches(trainig_set: torch.tensor, size: int, shuffle: bool = False):
@@ -90,7 +90,7 @@ def exponential_moving_average(raw_data: list, filtered_data: list, alpha: float
     else:
         filtered_data.append(alpha*last_data + (1-alpha)*filtered_data[-1])
 
-# TODO: que se pueda cambiar la funcion de activcacion de la red
+
 class Mine2(nn.Module):
     """
     Modelo de red neuronal para estimar información mutua
@@ -105,7 +105,7 @@ class Mine2(nn.Module):
     la misma posee una cota superior al estimarse con una red neuronal.
     """
 
-    def __init__(self, hidden_layers: int, neurons: int, cuda: str = None):
+    def __init__(self, hidden_layers: int, neurons: int, act_func: str = "relu", cuda: str = None):
         """
         Parameters
         ----------
@@ -115,6 +115,8 @@ class Mine2(nn.Module):
             be of 1 dimension. Minimum value permitted: 1.
         neurons : int
             Amount of neurons per hidden layer.
+        act_func : str
+            Name of activation function to be used in all layers of the network.
         cuda : str
             Specify where the model should run, on cpu or in graphic processor.
             If None, it will run on gpu if found, else on cpu.
@@ -134,14 +136,24 @@ class Mine2(nn.Module):
 
         # Create model
         model = OrderedDict()
+
         for i in range(hidden_layers + 1):
+
+            # Add layer of neurons
             if i == 0:
                 model["first layer"] = nn.Linear(2, neurons)
             elif i != hidden_layers:
                 model["middle layer"] = nn.Linear(neurons, neurons)
             else:
                 model["last layer"] = nn.Linear(neurons, 1)
-            model["activation func"] = nn.ReLU()
+
+            # Add activation function
+            if act_func == "relu":
+                model["activation func"] = nn.ReLU()
+            elif act_func == "Lrelu":
+                model["activation func"] = nn.LeakyReLU()
+            elif act_func == "elu":
+                model["activation func"] = nn.ELU()
         self.model = nn.Sequential(model).to(self.cuda)
 
         # lists for data collection during training
