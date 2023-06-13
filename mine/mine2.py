@@ -349,7 +349,7 @@ class Mine2(nn.Module):
 
         # In each epoch we train and validate
         for epoch in iterable:
-            if not show_progress:
+            if show_progress:
                 if epoch % 1000 == 0:
                     print(f"\n--------------Epoch {epoch}--------------")
                 elif epoch % 100 == 0:
@@ -385,8 +385,9 @@ class Mine2(nn.Module):
 
             # stop criterion
             if self.stop_criterion():
-                print("\nReached the stopping criterion!!")
-                print(f"Ended in epoch {epoch}")
+                if show_progress:
+                    print("\nReached the stopping criterion!!")
+                    print(f"Ended in epoch {epoch}")
                 self.trained = True
                 break
 
