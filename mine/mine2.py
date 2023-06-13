@@ -349,10 +349,11 @@ class Mine2(nn.Module):
 
         # In each epoch we train and validate
         for epoch in iterable:
-            if epoch % 1000 == 0:
-                print(f"\n--------------Epoch {epoch}--------------")
-            elif epoch % 100 == 0:
-                print(f"{epoch}", end='-')
+            if not show_progress:
+                if epoch % 1000 == 0:
+                    print(f"\n--------------Epoch {epoch}--------------")
+                elif epoch % 100 == 0:
+                    print(f"{epoch}", end='-')
 
             # ############### Training loop ###############
             self.train()  # Set model to training mode
