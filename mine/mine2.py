@@ -416,12 +416,6 @@ class Mine2(nn.Module):
 
     def estimacion_mi(self):
 
-        # if self.trained:
-        #     if criterio == "criterio 1":
-        #         return max(self.validation_raw)
-        #     elif criterio == "criterio 2":
-        #         return self.validation_complete[self.maximum_pos]
-
         return (max(self.validation_raw), np.argmax(self.validation_raw)), \
                (self.testing_raw[np.argmax(self.validation_filtered)], np.argmax(self.validation_filtered)), \
                (self.validation_raw[np.argmax(self.validation_filtered)], np.argmax(self.validation_filtered))
