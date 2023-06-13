@@ -105,7 +105,8 @@ class Mine2(nn.Module):
     la misma posee una cota superior al estimarse con una red neuronal.
     """
 
-    def __init__(self, hidden_layers: int, neurons: int, act_func: str = "relu", cuda: str = None):
+    def __init__(self, hidden_layers: int, neurons: int, act_func: str = "relu", cuda: str = None,
+                 validation_average=100, stop_patience=1000):
         """
         Parameters
         ----------
@@ -162,15 +163,18 @@ class Mine2(nn.Module):
         self.validation_raw = []
         self.validation_filtered = []
         self.testing_raw = []
-        self.k = 100  # orden del filtrado moving average
-        self.alpha = 0.8
+        self.k = validation_average  # orden del filtrado moving average
+        # self.alpha = 0.8
         self.maximum = None
         self.maximum_pos = None
-        self.tolerance = 0.00  # measured in mutual information units (upper bound)
-        self.stop_patience = 1000  # measured in epochs
+        # self.tolerance = 0.00  # measured in mutual information units (upper bound)
+        self.stop_patience = stop_patience  # measured in epochs
         self.time_lapse = 0  # in epochs
 
         self.trained: bool = False
+
+    def last_epoc(self):
+        return len(self.training_raw)
 
     def forward(self, x: torch.tensor, z: torch.tensor):
         """
@@ -271,7 +275,7 @@ class Mine2(nn.Module):
             random_partition: bool = False,
             show_progress: bool = False,
             patience: int = 250,
-            scaling_factor:float = 0.5):
+            scaling_factor: float = 0.5):
         """
         Trains the MINE model
 
@@ -304,6 +308,13 @@ class Mine2(nn.Module):
         show_progress : bool
             Flag to turn on the percetage of training progress-bar. Cannot
             be true if num_epochs is None.
+        patience: int
+            Patience for scehduler configuration. It is the amount of epochs
+            that will run before reducing learning rate if no significante change
+            has occurred.
+        scaling_factor: float
+            The factor by which the learning rate will be reduced if no significant
+            change is recorder in a certain amount of epochs (by the scheduler).
         """
 
         assert signal_x.shape == signal_z.shape, "Signal sizes do no match"
@@ -392,7 +403,7 @@ class Mine2(nn.Module):
         if len(self.validation_filtered) == 1:
             self.maximum = self.validation_filtered[0]
             self.maximum_pos = 0
-        elif self.validation_filtered[-1] >= (self.maximum + self.tolerance):
+        elif self.validation_filtered[-1] >= self.maximum:
             self.maximum = self.validation_filtered[-1]
             self.maximum_pos = len(self.validation_filtered) - 1
             self.time_lapse = 0  # reset the time-lapse
