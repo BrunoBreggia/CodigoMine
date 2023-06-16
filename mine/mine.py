@@ -7,7 +7,7 @@ import torch.nn as nn
 # import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-from .mineTools import actFunc, generate_batches
+from mineTools import actFunc, generate_batches
 
 # Implementacion de red neuronal multicapas
 # para estimacion de red neuronal profunda
