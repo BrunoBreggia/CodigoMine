@@ -445,36 +445,19 @@ class Mine2(nn.Module):
             Flag that indicates if we want to save the plot to a pdf file.
         """
 
-        plt.plot(self.training_raw, color='b', label='Training')
-        plt.plot(self.validation_raw, color='g', label='Validation raw')
-        plt.plot(self.validation_filtered, color='orange', label='Validation')
+        # plt.plot(self.training_raw, color='b', label='Training')
+        plt.plot(self.validation_raw, color='g', label='Validation')
+        plt.plot(self.testing_raw, color='orange', label='Testing')
+        plt.plot(self.validation_filtered, color='red', label='Validation smoothed')
 
         if true_mi is not None:
-            plt.axhline(y=true_mi, color='r', linestyle='-')
+            plt.axhline(y=true_mi, color='k', linestyle='-', label='True mutual information')
 
         plt.ylabel('Mutual information estimation')
         plt.xlabel('epoch')
         plt.title(f"MINE progress")
         plt.grid()
         plt.legend(loc='best')
-
-        plt.figure()
-
-        plt.plot(self.testing_raw, color='purple', label='Valitation complete and raw')
-        plt.plot(self.validation_filtered, color='orange', label='Validation')
-
-        if true_mi is not None:
-            plt.axhline(y=true_mi, color='r', linestyle='-')
-
-        plt.ylabel('Mutual information estimation')
-        plt.xlabel('epoch')
-        plt.title(f"MINE progress")
-        plt.grid()
-        plt.legend(loc='best')
-
-        # if save:
-        #     plt.savefig(f'mine{self.hiddenLayers}-{self.neurons}.pdf')
-        # plt.show()
 
 
 if __name__ == "__main__":
@@ -495,7 +478,7 @@ if __name__ == "__main__":
     # Informacion mutua mediante formula
     true_mi = -0.5 * np.log(np.linalg.det(cov_matrix))
 
-    MINE = Mine2(3, 100)
+    MINE = Mine2(1, 50)
 
     tic = time.time()
     MINE.fit(x, z, num_epochs=10000, minibatch_size=500, learning_rate=5e-3, random_partition=True, show_progress=True)
