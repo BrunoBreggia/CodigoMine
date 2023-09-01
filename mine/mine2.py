@@ -35,8 +35,7 @@ def generate_minibatches(trainig_set: torch.tensor, size: int, shuffle: bool = F
     """
 
     if shuffle:
-        size = trainig_set.shape[0]
-        rand_perm = torch.randperm(size)
+        rand_perm = torch.randperm(trainig_set.shape[0])
         trainig_set = trainig_set[rand_perm]
 
     minibatches = trainig_set.split(size, dim=0)
@@ -330,7 +329,8 @@ class Mine2(nn.Module):
         if random_partition:
             # Extraigo set de validacion de forma aleatoria como muestras dispersas del dataset total
             val_mask = torch.zeros(len(signal_x), dtype=torch.bool)
-            val_indices = torch.randint(size=(val_size,), low=0, high=len(val_mask))
+            # val_indices = torch.randint(size=(val_size,), low=0, high=len(val_mask))
+            val_indices = torch.randperm(len(signal_x))[:val_size]
             val_mask[val_indices] = True
             val_dataset = torch.cat((signal_x[val_mask], signal_z[val_mask]), dim=1)
             train_dataset = torch.cat((signal_x[~val_mask], signal_z[~val_mask]), dim=1)
