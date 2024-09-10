@@ -46,7 +46,7 @@ Con esta idea en mente, presentamos MINE en la definición~\ref{def:mine}.
 Sea $\mathcal{F}=\{ T_{\theta} \}_{\theta \in \Theta}$ un conjunto de funciones parametrizadas por una red neuronal. 
 MINE (Mutual Information Neural Estimator) se define como:
 
-$$\hat{I}(X;Y)_ {n} = \sup\limits_{\theta \in \Theta} \mathbb{E}_ {P_{XY}}\left[T_\theta\right] - \log \left( \mathbb{E}_{P_{X} P_{Y}}\left[e^{T_\theta}\right] \right)$$
+$$\hat{I}(X;Y)_ {n} = \sup\limits_{\theta \in \Theta} \mathbb{E}_ {P_{XY}}\left[T_\theta\right] - \log \left( \mathbb{E}_ {P_{X} P_{Y}}\left[e^{T_\theta}\right] \right)$$
 
 En donde $P$ refiere a distribuciones empíricas asociadas a $n$ muestras independientes idénticamente distribuidas.
 
