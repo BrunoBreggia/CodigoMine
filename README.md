@@ -10,8 +10,8 @@ De esta manera, se emplea la red neuronal como un optimizador de funciones. Dich
 se obtiene a partir de una representación particular de la divergencia de Kullback-Leibler ($D_{KL}$). 
 Para ver demostración remitirse al paper de Belghazi _et al_.
 
-| Representación de Donsker-Varadhan de $D_{KL}$                                                                                                                                                                                                                                                                             |
-|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|                                                                                                                                            Representación de Donsker-Varadhan de $D_{KL}$                                                                                                                                            |
+|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
 | La divergencia de Kulback-Leibler admite la siguiente representación:<br/>$$\tag{1} D_{KL}(p\|q) = \sup\limits_{T:\Omega \to \mathbb{R}} \mathbb{E}_p[T] - \log \left(\mathbb{E}_q\left[e^T\right]\right)$$ <br/>en donde el valor superior se obtiene entre todas las funciones $T$ tal que los dos valores esperados sean finitos. |
 
 Sea $\mathcal{F}$ un subconjunto cualquiera de funciones que mapea elementos según la regla 
