@@ -29,7 +29,7 @@ $T_{\theta}: \mathcal{X} \mathcal{Y} \to \mathbb{R}$ parametrizada por una red n
 parámetros $\theta \in \Theta$. Bajo esta suposición, consideremos el miembro derecho de 
 la inecuación~\ref{eq:info-inequality} como nuestro estimador $I_{\Theta}(X;Y)$.
 
-$$I_{\Theta}(X;Y) \equiv \sup\limits_{\theta\in \Theta} \mathbb{E}_ {P_{XY}}[T_{\theta}] - \log (\mathbb{E}_{P_X P_Y}[e^{T_{\theta}}])$$
+$$I_{\Theta}(X;Y) \equiv \sup\limits_ {\theta\in \Theta} \mathbb{E}_ {P_ {XY}}[T_ {\theta}] - \log (\mathbb{E}_ {P_ X P_ Y}[e^{T_ {\theta}}])$$
 
 De esta manera, reemplazando el valor del estimador~\ref{eq:mi-estimator} en la 
 expresión~\ref{eq:info-inequality}, tenemos:
