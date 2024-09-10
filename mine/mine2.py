@@ -446,16 +446,16 @@ class Mine2(nn.Module):
         """
 
         # plt.plot(self.training_raw, color='b', label='Training')
-        plt.plot(self.validation_raw, color='g', label='Validation')
-        plt.plot(self.testing_raw, color='orange', label='Testing')
-        plt.plot(self.validation_filtered, color='red', label='Validation smoothed')
+        plt.plot(self.validation_raw, color='g', label='Validacion')
+        plt.plot(self.testing_raw, color='orange', label='Estimación total')
+        plt.plot(self.validation_filtered, color='red', label='Validacion suavizada')
 
         if true_mi is not None:
-            plt.axhline(y=true_mi, color='k', linestyle='-', label='True mutual information')
+            plt.axhline(y=true_mi, color='k', linestyle='-', label='IM verdadera')
 
-        plt.ylabel('Mutual information estimation')
-        plt.xlabel('epoch')
-        plt.title(f"MINE progress")
+        plt.ylabel('Estimación de IM')
+        plt.xlabel('Epoca')
+        plt.title(f"Progreso de MINE")
         plt.grid()
         plt.legend(loc='best')
 
@@ -494,4 +494,30 @@ if __name__ == "__main__":
     # print(f"Info mutua (criterio 1): {mi_1}")
     # print(f"Info mutua (criterio 2): {mi_2}")
 
+    ## Guardar entrenamiento en archivo
+    # with open("datos_MINE.txt", "w", encoding="utf-8") as archivo:
+    #     archivo.write("validation_raw\n")
+    #     for data in MINE.validation_raw:
+    #         print(data, file=archivo)
+    #     archivo.write("validation_filtered\n")
+    #     for data in MINE.validation_filtered:
+    #         print(data, file=archivo)
+    #     archivo.write("testing_raw\n")
+    #     for data in MINE.testing_raw:
+    #         print(data, file=archivo)
 
+    ## Indicar los tres estimadores en la gráfica
+    # plt.figure()
+    # plt.plot(MINE.validation_raw, color='b', label='Validation')
+    # plt.plot(MINE.testing_raw, color='red', label='Testing')
+    # plt.plot(MINE.validation_filtered, color='k', label='Validation smoothed')
+    #
+    # pos_1 = np.argmax(MINE.validation_raw)
+    # pos_2 = np.argmax(MINE.validation_filtered)
+    #
+    # plt.plot(pos_1, MINE.validation_raw[pos_1], "o", color="k", linewidth=5)
+    # plt.plot(pos_2, MINE.testing_raw[pos_2], "o", color="k", linewidth=5)
+    # plt.plot(pos_2, MINE.validation_raw[pos_2], "o", color="k", linewidth=5)
+    #
+    # plt.grid()
+    # plt.legend(loc='best')
