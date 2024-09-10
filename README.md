@@ -12,13 +12,13 @@ Para ver demostración remitirse al paper de Belghazi _et al_.
 
 |                                                                                                                                 *Teorema 1:* Representación de Donsker-Varadhan de $D_{KL}$                                                                                                                                  |
 |:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
-| La divergencia de Kulback-Leibler admite la siguiente representación:<br/>$$D_{KL}(p\|\|q) = \sup\limits_{T:\Omega \to \mathbb{R}} \mathbb{E}_p[T] - \log \left(\mathbb{E}_q\left[e^T\right]\right)$$ <br/>en donde el valor superior se obtiene entre todas las funciones $T$ tal que los dos valores esperados sean finitos. |
+| La divergencia de Kulback-Leibler admite la siguiente representación:<br/>$$D_{KL}(p\|q) = \sup\limits_{T:\Omega \to \mathbb{R}} \mathbb{E}_p[T] - \log \left(\mathbb{E}_q\left[e^T\right]\right)$$ <br/>en donde el valor superior se obtiene entre todas las funciones $T$ tal que los dos valores esperados sean finitos. |
 
 Sea $\mathcal{F}$ un subconjunto cualquiera de funciones que mapea elementos según la regla 
 $\Omega \to \mathbb{R}$, y tal que se cumplan las condiciones del teorema (1), 
 se tiene entonces la cota inferior:
 
-$$D_{KL}(p||q) \ge \sup\limits_{T\in \mathcal{F}} \mathbb{E}_p[T] - \log (\mathbb{E}_q[e^T])$$
+$$D_{KL}(p\|q) \ge \sup\limits_{T\in \mathcal{F}} \mathbb{E}_p[T] - \log (\mathbb{E}_q[e^T])$$
 
 Siendo que la información mutua entre las variables aleatorias $X$ y $Y$ se define como la 
 divergencia entre las distribuciones $P_{XY}(x,y)$ y $P_X(x)P_Y(y)$, tenemos:
