@@ -22,7 +22,7 @@ $$D_{KL}(p||q) \ge \sup\limits_{T\in \mathcal{F}} \mathbb{E}_p[T] - \log (\mathb
 Siendo que la información mutua entre las variables aleatorias $X$ y $Y$ se define como la 
 divergencia entre las distribuciones $P_{XY}(x,y)$ y $P_X(x)P_Y(y)$, tenemos:
 
-$$I(X;Y) \ge \sup\limits_ {T\in \mathcal{F}} \mathbb{E}_ {P_ {XY}}[T] - \log (\mathbb{E}_ {P _X P _Y}[e^T])$$
+$$I(X;Y) \ge \sup\limits_ {T\in \mathcal{F}} \mathbb{E}_ {P_ {XY}}[T] - \log (\mathbb{E}_ {P_ X P_ Y}[e^T])$$
 
 El conjunto $\mathcal{F}$ podría ser una familia de funciones 
 $T_{\theta}: \mathcal{X} \mathcal{Y} \to \mathbb{R}$ parametrizada por una red neuronal con
