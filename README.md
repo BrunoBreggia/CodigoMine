@@ -65,6 +65,30 @@ original $\mathbf{y}$.
 
 $$\frac{1}{b} \sum\limits_{i=1}^{b}T_\theta(\mathbf{x}_ i,\mathbf{y}_ i) - \log \left[ \frac{1}{b} \sum\limits_{i=1}^{b} e^{T _\theta(\mathbf{x}_i,\bar{\mathbf{y}}_i)} \right]$$
 
+### Indicadores para la estimación
+Durante el entrenamiento de la red, se almacena por cada época tres 
+indicadores, que nos permiten monitorear el progreso de la red. Éstos son:
+* Salida de la red aplicado a los datos de validación (**indicador de validación**)
+* Salida de la red aplicado al dataset completo (**indicador de testeo**)
+* Indicador de validación suavizado con un _linear moving average_ de 100 pasos
+(**indicador de validación suavizado**)
+
+Con estos tres indicadores se trazan las curvas de progreso de la red en
+función de las épocas de entrenamiento. A partir de estas curvas, 
+definimos tres estimadores de información mutua:
+1. **Estimador 1:** el valor más alto del indicador de validación
+2. **Estimador 2:** el valor más alto del indicador de testeo
+3. **Estimador 3:** el valor del índice de validación para la posición
+en donde el índice de validación filtrada es la mayor.
+
+Vemos a continuación el progreso de entrenamiento de una red
+MINE entrenada con un par de señales aleatorias con coeficiente de 
+correlación 0.5, con la evolución de los tres indicadores a lo largo
+de las épocas, y señalando los tres estimadores que se obtienen a 
+partir de los mismos.
+
+![Entrenamiento de red MINE](./pictures/mine_progress_est.png)
+
 ### Instalación como Módulo de Python
 Para tener `mine` disponible como módulo de python (y poder ser 
 importado por un script que quiera hacer uso del método) se deben seguir 
