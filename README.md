@@ -97,7 +97,7 @@ samples = 1000
 joint_samples_train = np.random.multivariate_normal(mean=mu, cov=cov_matrix, size=(samples, 1))
 X_samples = joint_samples_train[:, :, 0]
 Z_samples = joint_samples_train[:, :, 1]
-# Convert to tensors
+# Convierto a tensores
 x = torch.from_numpy(X_samples).float().to(device=CUDA)
 z = torch.from_numpy(Z_samples).float().to(device=CUDA)
 # Información mutua mediante formula (para distribuciones normales)
