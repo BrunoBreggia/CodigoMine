@@ -78,7 +78,7 @@ función de las épocas de entrenamiento. A partir de estas curvas,
 definimos tres estimadores de información mutua:
 1. **Estimador 1:** el valor más alto del indicador de validación
 2. **Estimador 2:** el valor más alto del indicador de testeo
-3. **Estimador 3:** el valor del índice de validación para la posición
+3. **Estimador 3:** el valor del indicador de validación para la posición
 en donde el índice de validación filtrada es la mayor.
 
 Vemos a continuación el progreso de entrenamiento de una red
