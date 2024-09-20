@@ -3,6 +3,8 @@ En este repositorio se encuentran los códigos de implementación de MINE (Mutua
 una red neuronal para la estimación de información mutua entre dos señales aleatorias, con la finalidad
 de aplicarlo a señales de origen biológico.
 
+### Fundamentación del Método
+
 Hacia el año 2018, Belghazi _et al_. publicaron un artículo en el que proponen un estimador de información
 mutua basado en redes neuronales, llamado MINE (Mutual Information Neural Estimator).
 Belghazi no propone una arquitectura de red en específica, sino una función a maximizar.
@@ -62,4 +64,52 @@ de $b$ muestras pareadas, donde el vector $\bar{\mathbf{y}}$ es una versión per
 original $\mathbf{y}$.
 
 $$\frac{1}{b} \sum\limits_{i=1}^{b}T_\theta(\mathbf{x}_ i,\mathbf{y}_ i) - \log \left[ \frac{1}{b} \sum\limits_{i=1}^{b} e^{T _\theta(\mathbf{x}_i,\bar{\mathbf{y}}_i)} \right]$$
+
+### Instalación como Módulo de Python
+Para tener `mine` disponible como módulo de python (y poder ser 
+importado por un script que quiera hacer uso del método) se deben seguir 
+los siguientes pasos:
+1. Clonar el presente repositorio a la carpeta de trabajo.
+2. Abrir un intérprete de comandos ubicado dentro del repositorio mine
+y ejecutar el siguiente código: `pip install -e .` Esto instala el 
+repositorio mine como un paquete de Python en la versión de Python por
+defecto de la máquina.
+3. Desde cualquier script que vaya a ser ejecutado por dicho intérprete
+de Python, importar del paquete mine el módulo deseado para trabajar.
+Por ejemplo: `from mine import mine2`.
+
+### Código de Ejemplo
+A continuación se provee un script para evaluar la información mutua 
+entre dos señales aleatorias con distribución gaussiana, con media $\mu=(0,0)$
+y coeficiente de correlación $\rho = 0.5$, con 1000 muestras cada una.
+```python
+from mine.mine2 import Mine2
+import numpy as np
+import torch
+
+# defino la media
+mu = np.array((0,0))
+# defino matriz de covarianza
+rho = 0.5
+cov_matrix = np.array([[1, rho], [rho, 1]])
+# Genero la señal
+samples = 1000
+joint_samples_train = np.random.multivariate_normal(mean=mu, cov=cov_matrix, size=(samples, 1))
+X_samples = joint_samples_train[:, :, 0]
+Z_samples = joint_samples_train[:, :, 1]
+# Convert to tensors
+x = torch.from_numpy(X_samples).float().to(device=CUDA)
+z = torch.from_numpy(Z_samples).float().to(device=CUDA)
+# Información mutua mediante formula (para distribuciones normales)
+true_mi = -0.5 * np.log(np.linalg.det(cov_matrix))
+# Instancio la red
+red = Mine2(hidden_layers=3, neurons=50, act_func='relu', cuda=CUDA,
+            validation_average=100, stop_patience=1000)
+# Entreno la red
+minibatch_size = int(len(x) * 0.1)  # 10% del dataset original 
+red.fit(x, z, train_percent=80, minibatch_size=minibatch_size, learning_rate=1e-3,
+        num_epochs=15000, random_partition=True, patience=250, scaling_factor=0.5)
+# Obtengo las estimaciones
+estimador1, estimador2, estimador3 = red.estimacion_mi()
+```
 
